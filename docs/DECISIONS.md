@@ -19,6 +19,9 @@ Chose hero banner + horizontal scrolling rows (Netflix convention) over a dense 
 ### 2026-08-05 — Solo build
 Building without a team for now. Tooling and process choices (e.g. moderation UI, CI setup) should optimize for one person's throughput, not team collaboration overhead.
 
+### 2026-08-05 — Simplified Stack: Single React + Supabase Project (No Monorepo, No Python API)
+Pivoted from a monorepo + Python FastAPI backend setup to a lean, single-package React + Vite + TypeScript frontend at root, backed directly by Supabase (`@supabase/supabase-js`). This removes backend maintenance overhead and speeds up MVP development while leveraging Supabase Postgres, Auth, and Storage natively.
+
 ---
 
 _Add new entries above this line, most recent first is fine or chronological — pick one and stay consistent._

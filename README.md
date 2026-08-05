@@ -1,8 +1,8 @@
 # Cozia
 
-Family-friendly social + streaming platform. Watch curated YouTube video (shorts and full-length) inside a Netflix-style browsing experience, with a social/community layer on top.
+Family-friendly social + streaming platform. Watch curated YouTube content (shorts and full-length) inside a Netflix-style browsing experience, with a social/community layer on top.
 
-Built solo. Built to be better than X-Cloud ever would have been.
+Built solo. Powered by **React + Vite + Supabase**.
 
 ## What Cozia Is
 
@@ -11,48 +11,55 @@ Built solo. Built to be better than X-Cloud ever would have been.
 - A **social layer**: profiles, follows, reactions, comments, community activity ("Friends are watching", "Popular in your community").
 - **Family-safe by design**: curation, tagging, and moderation control what surfaces — not what the raw YouTube catalog contains.
 
-## What Cozia Is Not (v1)
-
-- Not a video host. No original video storage/transcoding in v1.
-- Not a full YouTube clone. No arbitrary search-the-whole-internet experience — content surfaces through curated rows/categories.
-- Not multi-tenant / white-label (yet).
-
 ## Tech Stack
 
 | Layer | Choice |
 |---|---|
-| Frontend | React + Vite + Tailwind + shadcn/ui |
-| Backend | FastAPI (thin service layer, keeps YouTube API key server-side) |
-| Database / Auth / Storage | Supabase (Postgres, Auth, Storage) |
-| Background jobs | ARQ (Redis-backed) — for cache refresh, metadata sync, moderation queue processing |
-| Video | YouTube Data API v3 (search/metadata) + YouTube IFrame Player API (playback) |
-| Cache | Redis |
+| Frontend | React 18 + Vite + TypeScript + Tailwind CSS |
+| Backend & Auth & Storage | Supabase (Postgres, Auth, Realtime, Storage) |
+| Video | YouTube Data API v3 + YouTube IFrame Player API |
 
-## Repo Structure (proposed)
+## Repo Structure
 
 ```
 cozia/
-├── apps/
-│   ├── web/              # React/Vite frontend
-│   └── api/               # FastAPI backend
-├── packages/
-│   └── shared-types/      # Shared TS types between web and any future clients
+├── src/
+│   ├── components/       # UI components & shelves
+│   ├── lib/              # Supabase client, utils, helpers
+│   ├── types/            # TypeScript interfaces
+│   ├── App.tsx           # Main application view
+│   ├── main.tsx          # React entry point
+│   └── index.css         # Tailwind & global styles
 ├── docs/
-│   ├── README.md
-│   ├── ARCHITECTURE.md
-│   ├── DESIGN.md
-│   ├── TODO.md
-│   └── DECISIONS.md
-└── infra/                 # Supabase migrations, deploy configs
+│   ├── ARCHITECTURE.md   # System design & data models
+│   ├── DESIGN.md         # Design system & tokens
+│   ├── TODO.md           # Phased build plan
+│   └── DECISIONS.md      # Key decisions log
+├── infra/                # Supabase migrations & RLS policies
+├── index.html
+├── package.json
+├── vite.config.ts
+├── tsconfig.json
+├── tailwind.config.js
+└── README.md
 ```
 
 ## Getting Started
 
-_(Fill in once repo is initialized — Phase 0 in TODO.md)_
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
+```
 
 ## Docs Index
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — system design, data flow, API boundaries
-- [DESIGN.md](./DESIGN.md) — UI/UX direction, layout references, design tokens
-- [TODO.md](./TODO.md) — phased build plan, Phase 0 → completion
-- [DECISIONS.md](./DECISIONS.md) — running log of key decisions and why
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — system design, data flow, API boundaries
+- [DESIGN.md](docs/DESIGN.md) — UI/UX direction, layout references, design tokens
+- [TODO.md](docs/TODO.md) — phased build plan, Phase 0 → completion
+- [DECISIONS.md](docs/DECISIONS.md) — running log of key decisions and why
