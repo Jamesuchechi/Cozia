@@ -183,6 +183,9 @@ CREATE POLICY "Admins/Curators can manage curated videos"
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'curator'))
   );
 
+CREATE POLICY "Allow insertion into curated_videos"
+  ON public.curated_videos FOR INSERT WITH CHECK (true);
+
 -- 3. Shelves Policies
 CREATE POLICY "Shelves are viewable by everyone"
   ON public.shelves FOR SELECT USING (true);

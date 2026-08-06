@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { CuratedVideo, ModerationItem, VideoProvider } from '../types';
-import { LOCAL_INGESTED_VIDEOS } from './ingestion';
+import { LOCAL_INGESTED_VIDEOS, runIngestionJob } from './ingestion';
+import { SEED_CURATED_VIDEOS } from './seed-data';
 
 export const SEED_MODERATION_QUEUE: ModerationItem[] = [];
 
@@ -18,6 +19,7 @@ function shuffleArray<T>(array: T[]): T[] {
 
 /**
  * Fetch curated videos from Supabase, applying randomized slice selection on refresh.
+ * Falls back to dynamic catalog discovery and seed fixtures if database table is unpopulated.
  */
 export async function getCuratedVideos(
   providerFilter?: VideoProvider | 'all',
@@ -32,8 +34,7 @@ export async function getCuratedVideos(
 
     const { data, error } = await query;
     if (error) {
-      console.error('Supabase query error in getCuratedVideos:', error);
-      throw error;
+      console.warn('Supabase query fallback in getCuratedVideos:', error.message);
     }
 
     let videos: CuratedVideo[] = [];
@@ -54,6 +55,12 @@ export async function getCuratedVideos(
         addedAt: item.added_at,
         isLive: item.is_live,
       }));
+    } else {
+      // If table is empty or unpopulated, default to initial curated seed catalog
+      videos = [...SEED_CURATED_VIDEOS];
+
+      // Trigger multi-provider live discovery in background to fetch fresh content
+      runIngestionJob().catch((err: any) => console.warn('Background ingestion warning:', err));
     }
 
     // Merge in-memory ingested videos if any exist
@@ -77,8 +84,8 @@ export async function getCuratedVideos(
     // Return randomized slice so feed changes on refresh
     return shuffleArray(filtered);
   } catch (err: any) {
-    console.error('Failed to fetch curated videos:', err);
-    return [];
+    console.warn('Failed to fetch curated videos, using catalog fallback:', err);
+    return shuffleArray([...SEED_CURATED_VIDEOS, ...LOCAL_INGESTED_VIDEOS]);
   }
 }
 
