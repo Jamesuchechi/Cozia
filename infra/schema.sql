@@ -168,73 +168,93 @@ ALTER TABLE public.reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.moderation_queue ENABLE ROW LEVEL SECURITY;
 
 -- 1. Profiles Policies
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone"
   ON public.profiles FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
   ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- 2. Curated Videos Policies
+DROP POLICY IF EXISTS "Approved videos are viewable by everyone" ON public.curated_videos;
 CREATE POLICY "Approved videos are viewable by everyone"
   ON public.curated_videos FOR SELECT USING (safety_status = 'approved');
 
+DROP POLICY IF EXISTS "Admins/Curators can manage curated videos" ON public.curated_videos;
 CREATE POLICY "Admins/Curators can manage curated videos"
   ON public.curated_videos FOR ALL USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'curator'))
   );
 
+DROP POLICY IF EXISTS "Allow insertion into curated_videos" ON public.curated_videos;
 CREATE POLICY "Allow insertion into curated_videos"
   ON public.curated_videos FOR INSERT WITH CHECK (true);
 
 -- 3. Shelves Policies
+DROP POLICY IF EXISTS "Shelves are viewable by everyone" ON public.shelves;
 CREATE POLICY "Shelves are viewable by everyone"
   ON public.shelves FOR SELECT USING (true);
 
 -- 4. User Saved Videos Policies
+DROP POLICY IF EXISTS "Users can view their own saved list" ON public.user_saved_videos;
 CREATE POLICY "Users can view their own saved list"
   ON public.user_saved_videos FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert into their saved list" ON public.user_saved_videos;
 CREATE POLICY "Users can insert into their saved list"
   ON public.user_saved_videos FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete from their saved list" ON public.user_saved_videos;
 CREATE POLICY "Users can delete from their saved list"
   ON public.user_saved_videos FOR DELETE USING (auth.uid() = user_id);
 
 -- 5. Follows Policies
+DROP POLICY IF EXISTS "Follows are viewable by everyone" ON public.follows;
 CREATE POLICY "Follows are viewable by everyone"
   ON public.follows FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can manage their own follows" ON public.follows;
 CREATE POLICY "Users can manage their own follows"
   ON public.follows FOR ALL USING (auth.uid() = follower_id);
 
 -- 6. Posts Policies
+DROP POLICY IF EXISTS "Posts are viewable by everyone" ON public.posts;
 CREATE POLICY "Posts are viewable by everyone"
   ON public.posts FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can create posts" ON public.posts;
 CREATE POLICY "Authenticated users can create posts"
   ON public.posts FOR INSERT WITH CHECK (auth.uid() = author_id);
 
+DROP POLICY IF EXISTS "Users can delete their own posts" ON public.posts;
 CREATE POLICY "Users can delete their own posts"
   ON public.posts FOR DELETE USING (auth.uid() = author_id);
 
 -- 7. Comments Policies
+DROP POLICY IF EXISTS "Comments are viewable by everyone" ON public.comments;
 CREATE POLICY "Comments are viewable by everyone"
   ON public.comments FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can create comments" ON public.comments;
 CREATE POLICY "Authenticated users can create comments"
   ON public.comments FOR INSERT WITH CHECK (auth.uid() = author_id);
 
 -- 8. Reactions Policies
+DROP POLICY IF EXISTS "Reactions are viewable by everyone" ON public.reactions;
 CREATE POLICY "Reactions are viewable by everyone"
   ON public.reactions FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Authenticated users can manage reactions" ON public.reactions;
 CREATE POLICY "Authenticated users can manage reactions"
   ON public.reactions FOR ALL USING (auth.uid() = user_id);
 
 -- 9. Moderation Queue Policies
+DROP POLICY IF EXISTS "Users can insert nominations into moderation queue" ON public.moderation_queue;
 CREATE POLICY "Users can insert nominations into moderation queue"
   ON public.moderation_queue FOR INSERT WITH CHECK (auth.uid() = submitting_user_id);
 
+DROP POLICY IF EXISTS "Admins can view and manage moderation queue" ON public.moderation_queue;
 CREATE POLICY "Admins can view and manage moderation queue"
   ON public.moderation_queue FOR ALL USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'curator'))
