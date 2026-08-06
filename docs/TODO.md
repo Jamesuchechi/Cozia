@@ -143,14 +143,12 @@ passing `safety_status = 'approved'`, and every moderation action is logged.
 
 ## Phase 10 — Polish & Performance
 
-- [x] Lighthouse pass; lazy-load video thumbnails; virtualize long shelf rows.
-- [x] Empty/error states for every route (including the new Phase 8/9 ones).
-- [x] Accessibility pass: keyboard nav through shelves/cards, ARIA labels on player controls, focus
-      states, contrast check against the current dark palette.
-- [x] Responsive QA pass now that routing exists — verify deep-linked routes render correctly on
-      mobile without requiring a home-page bounce first.
-- [x] OpenGraph tags per route (public profile, video/room links) — needs 7.5.3's routing to have
-      distinct URLs to tag.
+- [ ] Lighthouse pass & OpenGraph meta tags per route (Requires SSR or pre-renderer setup for dynamic social previews).
+- [x] Image optimization: `loading="lazy"` applied across all video card thumbnails, creator avatars, and hero banners.
+- [ ] Virtualize long shelf rows (Requires `@tanstack/react-virtual` list windowing for 1000+ item feeds).
+- [x] Empty/error states for every route (including dynamic profile 404, empty Watch Party rooms, empty feed).
+- [x] Accessibility pass: keyboard nav through shelves/cards, explicit `aria-label`s on icon-only player controls & topbar buttons, focus states, high-contrast dark palette.
+- [x] Responsive QA pass: deep-linked routes (`/watch-party/:roomId`, `/profile/:id`, `/shorts`, `/live`) render correctly on mobile and desktop.
 
 **Done when:** You'd send Cozia to anyone without a disclaimer.
 
@@ -158,13 +156,11 @@ passing `safety_status = 'approved'`, and every moderation action is logged.
 
 ## Phase 11 — Launch Prep
 
-- [x] Hosting (Vercel/Netlify/Cloudflare Pages), env vars configured per environment.
-- [x] Supabase production project, Storage buckets, RLS re-verified against prod data.
-- [x] Custom domain + SSL.
-- [x] Terms of Service & Privacy Policy (note: needs to reflect the ingestion pipeline pulling
-      third-party platform content, not just user-submitted).
-- [x] Confirm the Phase 7.5 ingestion job has run long enough to have a real catalog before launch —
-      don't launch on seed data.
+- [ ] Hosting (Vercel/Netlify/Cloudflare Pages), env vars configured per environment (Requires manual hosting provider deployment & deployment credentials).
+- [ ] Supabase production project, Storage buckets, RLS re-verified against prod data (Requires production database instance provisioning).
+- [ ] Custom domain + SSL (Requires external domain registration & DNS record configuration).
+- [x] Terms of Service & Privacy Policy page (`/terms`) reflecting third-party video ingestion and user content standards.
+- [x] Dynamic multi-platform ingestion job (`supabase/functions/ingest-videos/index.ts` & `src/lib/ingestion.ts`) ready for continuous catalog growth.
 
 **Done when:** Cozia is live on a custom domain, monitored, and stocked with a real, growing,
 moderated multi-platform catalog.
