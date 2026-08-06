@@ -69,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-4">
           <button
             onClick={onToggleSidebar}
+            aria-label={isSidebarCollapsed ? "Expand sidebar navigation" : "Collapse sidebar navigation"}
             className="p-2 rounded-xl text-cozia-ink-dim hover:text-cozia-ink hover:bg-cozia-surface-2 transition-all"
             title="Toggle Sidebar"
           >
@@ -94,12 +95,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-4 pr-10 py-2 text-xs rounded-l-full bg-cozia-surface border border-cozia-line text-cozia-ink placeholder-cozia-ink-faint focus:outline-none focus:border-cozia-gold transition-all"
             />
-            <button className="absolute right-0 top-0 bottom-0 px-4 rounded-r-full bg-cozia-surface-2 border-l border-cozia-line text-cozia-ink-dim hover:text-cozia-gold transition-colors flex items-center justify-center">
+            <button
+              aria-label="Search curated videos"
+              className="absolute right-0 top-0 bottom-0 px-4 rounded-r-full bg-cozia-surface-2 border-l border-cozia-line text-cozia-ink-dim hover:text-cozia-gold transition-colors flex items-center justify-center"
+            >
               <Search className="w-4 h-4" />
             </button>
           </div>
 
           <button
+            aria-label="Search with voice"
             className="p-2.5 rounded-full bg-cozia-surface border border-cozia-line text-cozia-ink-dim hover:text-cozia-ink hover:bg-cozia-surface-2 transition-all"
             title="Search with Voice"
           >
@@ -112,6 +117,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Nominate Video Button */}
           <button
             onClick={onOpenNominate}
+            aria-label="Nominate a new family-safe video"
             className="px-3.5 py-1.5 rounded-xl bg-cozia-gold/15 border border-cozia-gold/30 text-cozia-gold text-xs font-semibold hover:bg-cozia-gold hover:text-cozia-bg transition-all flex items-center gap-1.5 shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -121,6 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Kids Mode Toggle */}
           <button
             onClick={handleKidsToggle}
+            aria-label={isKidsMode ? "Disable Kids Mode" : "Enable Kids Mode"}
             className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
               isKidsMode
                 ? 'bg-cozia-teal/20 border-cozia-teal text-cozia-teal shadow-md shadow-cozia-teal/10'
@@ -137,6 +144,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
+                aria-label="Open profile options menu"
                 className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-cozia-surface border border-transparent hover:border-cozia-line transition-all"
               >
                 <img
@@ -145,6 +153,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80'
                   }
                   alt={profile.displayName}
+                  loading="lazy"
                   className="w-8 h-8 rounded-lg object-cover ring-2 ring-cozia-gold/30"
                 />
                 <ChevronDown className="w-3.5 h-3.5 text-cozia-ink-dim hidden sm:block" />

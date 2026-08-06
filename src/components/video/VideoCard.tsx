@@ -98,6 +98,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           <img
             src={`https://api.dicebear.com/7.x/identicon/svg?seed=${video.providerVideoId}`}
             alt="Channel Avatar"
+            loading="lazy"
             className="w-full h-full object-cover"
           />
         </div>
@@ -127,6 +128,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         {/* More Actions 3-dots */}
         <button
           onClick={handleSaveClick}
+          aria-label={`More options for ${video.title}`}
           className="p-1 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors shrink-0"
           title="Save or Options"
         >

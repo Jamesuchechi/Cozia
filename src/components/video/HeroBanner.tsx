@@ -18,6 +18,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({ video, onPlay, onToggleS
       <img
         src={video.thumbnailUrl}
         alt={video.title}
+        loading="lazy"
         className="absolute inset-0 w-full h-full object-cover scale-105 filter brightness-75 group-hover:scale-100 transition-transform duration-1000"
       />
 

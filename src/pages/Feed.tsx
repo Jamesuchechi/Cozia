@@ -187,6 +187,7 @@ export const Feed: React.FC = () => {
                     <img
                       src={post.author?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80'}
                       alt={post.author?.displayName || 'User'}
+                      loading="lazy"
                       className="w-10 h-10 rounded-xl object-cover"
                     />
                     <div>
@@ -208,6 +209,7 @@ export const Feed: React.FC = () => {
                     <img
                       src={post.curatedVideo.thumbnailUrl}
                       alt={post.curatedVideo.title}
+                      loading="lazy"
                       className="w-24 h-16 rounded-lg object-cover"
                     />
                     <div className="flex-1 space-y-1">

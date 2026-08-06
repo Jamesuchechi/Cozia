@@ -37,6 +37,7 @@ export const PlayerModal: React.FC<PlayerModalProps> = ({
 
           <button
             onClick={onClose}
+            aria-label="Close modal video player"
             className="p-2 rounded-xl text-cozia-ink-dim hover:text-cozia-ink hover:bg-cozia-surface transition-all"
             title="Close player"
           >

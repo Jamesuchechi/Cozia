@@ -241,6 +241,7 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
               <img
                 src={`https://api.dicebear.com/7.x/identicon/svg?seed=${video.providerVideoId}`}
                 alt="Channel Avatar"
+                loading="lazy"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -340,7 +341,7 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
         <div className="space-y-3">
           {comments.map((comm) => (
             <div key={comm.id} className="p-3.5 rounded-xl bg-cozia-surface/60 border border-cozia-line/50 flex items-start gap-3">
-              <img src={comm.avatar} alt={comm.author} className="w-8 h-8 rounded-full bg-neutral-800" />
+              <img src={comm.avatar} alt={comm.author} loading="lazy" className="w-8 h-8 rounded-full bg-neutral-800" />
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-cozia-ink">{comm.author}</span>

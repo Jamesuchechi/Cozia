@@ -247,7 +247,7 @@ export const WatchParty: React.FC = () => {
                       : 'bg-cozia-surface border-cozia-line text-cozia-ink hover:border-cozia-gold/40'
                   }`}
                 >
-                  <img src={v.thumbnailUrl} alt={v.title} className="w-full h-20 rounded-lg object-cover" />
+                  <img src={v.thumbnailUrl} alt={v.title} loading="lazy" className="w-full h-20 rounded-lg object-cover" />
                   <p className="text-[11px] font-medium truncate">{v.title}</p>
                 </button>
               ))}

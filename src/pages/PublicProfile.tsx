@@ -142,7 +142,7 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({ profile: propProfi
         {/* Banner Image or Gradient */}
         <div className="h-44 sm:h-56 bg-gradient-to-r from-cozia-surface-2 via-cozia-gold/20 to-cozia-teal/20 relative">
           {activeProfile.bannerUrl && (
-            <img src={activeProfile.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+            <img src={activeProfile.bannerUrl} alt="Banner" loading="lazy" className="w-full h-full object-cover" />
           )}
         </div>
 
@@ -156,6 +156,7 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({ profile: propProfi
                 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'
               }
               alt={activeProfile.displayName}
+              loading="lazy"
               className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl object-cover ring-4 ring-cozia-bg shadow-2xl bg-cozia-surface"
             />
 
