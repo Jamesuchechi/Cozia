@@ -2,42 +2,50 @@
 
 ## 1. Reference Points
 
-- **Layout base: Netflix.** Hero banner (large featured video/collection at top) + horizontal scrolling rows below ("Family Picks", "Trending Shorts", "New This Week", "Because you watched X", "Popular in your community").
-- **Playback: YouTube IFrame Player**, wrapped in Cozia's own chrome (title, description, related row, comments/reactions below — not YouTube's native surrounding UI).
-- **Explicitly avoided:** YouTube's dense homepage grid. A grid signals "everything, unfiltered, algorithmic." Rows signal "someone curated this for you" — which is the trust signal Cozia needs without saying "safe" or "family" in the UI copy.
+- **Layout base: Netflix + YouTube Hybrid.** Hero banner (large featured video/collection at top) + horizontal scrolling rows below ("Family Picks", "Trending Shorts", "Twitch Live", "Vimeo Documentaries", "Popular in your community").
+- **Playback Engine:** Universal player wrapping **YouTube, Vimeo, Dailymotion, and Twitch** embedded APIs in Cozia's custom UI chrome (title, description, provider badges, related row, comments/reactions below — not native surrounding platform clutter).
+- **Navigation:** YouTube-style **Collapsible Desktop Sidebar** + Mobile **Bottom Navigation Bar** (Home, Browse, Live, Watch Party, Social Feed, My List, Profile).
+- **Explicitly avoided:** Dense, overwhelming algorithm grids. Rows signal "someone curated this for you" — which reinforces trust without sounding restrictive or childish.
 
 ## 2. Brand Feel
 
-- Name: **Cozia** — family-safe in *feel*, not spelled out. Brand tone should be warm, calm, trustworthy — not childish, not clinical.
-- Avoid: bright primary-color "kids app" palettes, cartoonish iconography, anything that reads as a locked-down/restricted product.
-- Aim for: the warmth of a well-designed streaming app (think Netflix/Apple TV+ visual polish) with a softer, more approachable edge than YouTube's utilitarian look.
+- Name: **Cozia** — family-safe in *feel*, not spelled out. Brand tone is warm, calm, and premium — inspired by top streaming platforms (Netflix, Apple TV+).
+- Palette: Dark base (`#12110E`) with warm surface containers (`#1C1A16`), gold accents (`#E8A33D`), and soft teal accents (`#3E8E7E`).
+- Typography: Display serif font (**Fraunces**) for headlines/brand logo + modern sans-serif (**Manrope**) for crisp UI elements.
 
-## 3. Landing / Browse Page Structure
+## 3. Navigation & App Layout
 
-1. **Header/Nav** — logo (Cozia), search, profile/household switcher, sign in.
-2. **Hero section** — large featured banner: auto-rotating or curated "spotlight" video/collection, title, short description, Play button.
-3. **Rows** (horizontal scroll, Netflix-style):
+1. **Header/Topbar**: Logo (`Cozia.`), global search input, provider filter tabs, notifications, profile switcher.
+2. **Desktop Sidebar**: Collapsible left navigation bar with quick links:
+   - Home / Browse
+   - Live Streams (Twitch)
+   - Watch Together (Sync Rooms)
+   - Community Feed
+   - My Saved List
+   - Moderation Queue (Admin/Curator view)
+   - Profile & Settings
+3. **Mobile Bottom Navigation Bar**: Sticky 5-icon bottom bar for touch devices (Home, Browse, Live, Feed, Profile).
+4. **Hero Section**: Large featured banner spotlight with auto-rotating highlights, title, short description, and 1-tap Play button.
+5. **Horizontal Scrolling Rows (Netflix-style)**:
    - Family Picks
-   - Trending Shorts
-   - New This Week
-   - Popular in Your Community (social signal — differentiates from Netflix/YouTube)
-   - Category rows (Kids, Education, Comedy, Music, etc. — TBD based on curation categories)
-4. **Footer** — standard (about, contact, terms — minimal for v1)
+   - Trending Shorts (YouTube Shorts)
+   - Live Now (Twitch Family Streamers)
+   - High-Art & Indie Short Films (Vimeo)
+   - Popular in Your Community (Social signal)
+   - Duration & Category Shelves (`< 10 mins`, `Storytime`, `Educational`)
 
-## 4. Video Detail / Player View
+## 4. Multi-Platform Video Player & Chrome
 
-- Player (YouTube IFrame) front and center, Cozia chrome around it.
-- Below player: title, description, curator/category tags, reactions, comment thread.
-- Right rail or below: "Related" row pulling from same category/curation tags.
+- **Universal Player Container**: Auto-routes to the appropriate SDK:
+  - **YouTube**: IFrame Player API
+  - **Vimeo**: Vimeo Player JS SDK
+  - **Dailymotion**: Dailymotion Player SDK
+  - **Twitch**: Twitch Interactive Embed (Live Stream + Chat overlay)
+- **Player Chrome**: Title, description, creator channel link, platform badge (YouTube / Vimeo / Dailymotion / Twitch), safety status badge, reaction bar (Likes, Hearts, Stars), and comment thread.
+- **Below Player**: "Related Videos" shelf pulling cross-platform content from the same category.
 
-## 5. Design Tokens (starting point — refine once brand/logo work happens)
+## 5. Profile & User Experience
 
-- **Typography:** Clean sans-serif (e.g. Inter or similar) for UI; slightly warmer display font for the logo/hero headlines if desired.
-- **Color:** Dark or dark-leaning base (Netflix/streaming convention — makes video thumbnails pop), with a warm accent color (not YouTube red, not Netflix red — differentiate) — consider a warm coral, amber, or soft teal as the Cozia accent.
-- **Corner radius / density:** Rounded cards (softer than YouTube's sharp thumbnails), generous spacing — reinforces "calm" over "infinite feed."
-
-## 6. Open Design Questions
-
-- Logo/wordmark direction — not started.
-- Exact accent color — needs a quick palette exploration once frontend scaffolding begins.
-- Mobile-first vs. desktop-first for the initial build (Netflix/YouTube both are heavily mobile-used).
+- **Public Profile View (`/profile/:id`)**: Avatar, display name, handle, bio, social links, saved list showcase, activity feed, and follower counts.
+- **Edit Profile View (`/profile/edit`)**: Avatar upload (Supabase Storage `avatars`), display name, custom handle, bio, social links, and parental PIN management.
+- **Parental Controls & PIN Mode**: 4-digit PIN toggle that locks settings and restricts browsing strictly to kids-approved categories.

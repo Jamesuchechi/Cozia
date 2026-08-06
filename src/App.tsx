@@ -1,98 +1,304 @@
-import { useState } from 'react';
-import { Play, Sparkles, ShieldCheck, Users, Film, Database } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Navbar } from './components/layout/Navbar';
+import { Sidebar } from './components/layout/Sidebar';
+import { BottomNav } from './components/layout/BottomNav';
+import { AuthModal } from './components/auth/AuthModal';
+import { ParentalPinModal } from './components/auth/ParentalPinModal';
+import { NominateModal } from './components/curation/NominateModal';
+import { VideoGrid } from './components/video/VideoGrid';
+import { VideoShelfRow } from './components/video/VideoShelfRow';
+import { PlayerModal } from './components/player/PlayerModal';
+import { PublicProfile } from './pages/PublicProfile';
+import { EditProfile } from './pages/EditProfile';
+import { ModerationQueue } from './pages/ModerationQueue';
+import { CuratedVideo, VideoProvider } from './types';
+import { getCuratedVideos } from './lib/curation';
+import { ShieldCheck, Radio, Bookmark } from 'lucide-react';
 
-export default function App() {
-  const [supabaseConnected] = useState<boolean>(
-    Boolean(import.meta.env.VITE_SUPABASE_URL)
-  );
+function AppContent() {
+  const { profile, isKidsMode } = useAuth();
+  const [currentView, setCurrentView] = useState<string>('home');
+  const [activeProvider, setActiveProvider] = useState<VideoProvider | 'all'>('all');
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+
+  const [videos, setVideos] = useState<CuratedVideo[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState<boolean>(true);
+  const [savedVideoIds, setSavedVideoIds] = useState<string[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<CuratedVideo | null>(null);
+
+  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+  const [isNominateOpen, setIsNominateOpen] = useState<boolean>(false);
+  const [pinModalState, setPinModalState] = useState<{ isOpen: boolean; mode: 'enter_pin' | 'set_pin' }>({
+    isOpen: false,
+    mode: 'enter_pin',
+  });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
+    loadVideos();
+  }, [activeProvider, activeCategory]);
+
+  const loadVideos = async () => {
+    setLoadingVideos(true);
+    const catFilter = activeCategory === 'All' ? undefined : activeCategory;
+    const data = await getCuratedVideos(activeProvider, catFilter);
+    setVideos(data);
+    setLoadingVideos(false);
+  };
+
+  const handleToggleSave = (video: CuratedVideo) => {
+    setSavedVideoIds((prev) =>
+      prev.includes(video.id) ? prev.filter((id) => id !== video.id) : [...prev, video.id]
+    );
+  };
+
+  const handleNavigate = (view: string) => {
+    setCurrentView(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenPinModal = (mode: 'enter_pin' | 'set_pin') => {
+    setPinModalState({ isOpen: true, mode });
+  };
+
+  // Group videos into YouTube style shelves & category views
+  const familyPicks = videos.filter((v) => v.category === 'Family Picks' || v.category === 'Music');
+  const shortsAndClips = videos.filter((v) => v.category === 'Relaxation' || v.tags.includes('Shorts'));
+  const educationalVideos = videos.filter((v) => v.category === 'Educational' || v.tags.includes('Science'));
+  const vimeoFilms = videos.filter((v) => v.provider === 'vimeo' || v.category === 'Documentary');
+  const twitchLiveStreams = videos.filter((v) => v.provider === 'twitch' || v.isLive);
+  const savedVideosList = videos.filter((v) => savedVideoIds.includes(v.id));
 
   return (
-    <div className="min-h-screen bg-cozia-bg text-cozia-ink flex flex-col selection:bg-cozia-gold selection:text-cozia-bg">
-      {/* Navigation */}
-      <nav className="flex items-center justify-between px-8 py-6 border-b border-cozia-line backdrop-blur-md sticky top-0 z-50 bg-cozia-bg/80">
-        <div className="flex items-center gap-2">
-          <span className="font-serif text-2xl font-semibold tracking-tight">
-            Cozia<span className="text-cozia-gold">.</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-6 text-sm text-cozia-ink-dim font-medium">
-          <a href="#features" className="hover:text-cozia-ink transition-colors">Features</a>
-          <a href="#browse" className="hover:text-cozia-ink transition-colors">Browse</a>
-          <span className="px-3 py-1 text-xs rounded-full bg-cozia-surface-2 border border-cozia-line text-cozia-gold font-mono flex items-center gap-1.5">
-            <Database className="w-3 h-3" />
-            {supabaseConnected ? 'Supabase Configured' : 'Supabase (Set Env)'}
-          </span>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-[#0b0a08] text-cozia-ink flex flex-col selection:bg-cozia-gold selection:text-cozia-bg font-sans">
+      {/* YouTube Style Topbar & Search Navigation */}
+      <Navbar
+        activeProvider={activeProvider}
+        onSelectProvider={setActiveProvider}
+        activeCategory={activeCategory}
+        onSelectCategory={setActiveCategory}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenNominate={() => setIsNominateOpen(true)}
+        onOpenPinModal={handleOpenPinModal}
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isSidebarCollapsed={isSidebarCollapsed}
+        currentView={currentView}
+        onNavigate={handleNavigate}
+      />
 
-      {/* Hero Section */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-16 flex flex-col items-center text-center justify-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cozia-surface border border-cozia-line text-cozia-gold text-xs font-medium mb-8">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>React + Supabase Setup Active</span>
-        </div>
+      {/* Main Body with YouTube/MovieBox Left Sidebar + Main Feed Area */}
+      <div className="flex-1 flex w-full">
+        <Sidebar
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          isCollapsed={isSidebarCollapsed}
+        />
 
-        <h1 className="font-serif text-5xl sm:text-6xl font-medium tracking-tight max-w-3xl leading-tight mb-6">
-          Family-friendly social <span className="text-cozia-gold italic">plus</span> streaming
-        </h1>
+        {/* Dynamic Route Content (YouTube Layout Spacing) */}
+        <main
+          className={`flex-1 pt-28 pb-24 md:pb-12 w-full px-4 sm:px-6 transition-all duration-300 ${
+            isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64'
+          }`}
+        >
+          {currentView === 'home' && (
+            <div className="space-y-8 animate-fade-in">
+              {/* Kids Mode Banner */}
+              {isKidsMode && (
+                <div className="p-3.5 rounded-2xl bg-cozia-teal/15 border border-cozia-teal/30 text-cozia-teal text-xs flex items-center justify-between shadow-lg">
+                  <div className="flex items-center gap-2 font-medium">
+                    <ShieldCheck className="w-5 h-5 shrink-0" />
+                    <span>Kids Mode Active — Browsing is restricted to family-approved content.</span>
+                  </div>
+                  <button
+                    onClick={() => handleOpenPinModal('enter_pin')}
+                    className="px-3 py-1 rounded-lg bg-cozia-teal text-cozia-bg font-semibold hover:opacity-90 transition-all shrink-0"
+                  >
+                    Exit Kids Mode
+                  </button>
+                </div>
+              )}
 
-        <p className="text-cozia-ink-dim text-lg max-w-2xl font-sans mb-10 leading-relaxed">
-          Watch curated YouTube content inside a Netflix-style browsing experience, enriched with a community layer built for families.
-        </p>
+              {/* YouTube Style Grid Feed */}
+              {loadingVideos ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <div key={n} className="h-56 rounded-2xl bg-cozia-surface animate-pulse border border-cozia-line" />
+                  ))}
+                </div>
+              ) : activeCategory !== 'All' || activeProvider !== 'all' ? (
+                <VideoGrid
+                  title={`${activeProvider !== 'all' ? activeProvider.toUpperCase() : ''} ${activeCategory !== 'All' ? activeCategory : 'Curated Videos'}`}
+                  videos={videos}
+                  onSelectVideo={(v) => setSelectedVideo(v)}
+                  onToggleSave={handleToggleSave}
+                  savedVideoIds={savedVideoIds}
+                />
+              ) : (
+                <div className="space-y-10">
+                  <VideoGrid
+                    title="Recommended For You"
+                    videos={videos}
+                    onSelectVideo={(v) => setSelectedVideo(v)}
+                    onToggleSave={handleToggleSave}
+                    savedVideoIds={savedVideoIds}
+                  />
 
-        <div className="flex flex-wrap items-center justify-center gap-4">
-          <button className="px-6 py-3.5 rounded-xl bg-cozia-gold text-cozia-bg font-semibold hover:bg-cozia-gold-dim transition-all shadow-lg shadow-cozia-gold/10 flex items-center gap-2">
-            <Play className="w-4 h-4 fill-current" />
-            <span>Browse Content</span>
-          </button>
-          <a
-            href="https://github.com/Jamesuchechi/Cozia"
-            target="_blank"
-            rel="noreferrer"
-            className="px-6 py-3.5 rounded-xl bg-cozia-surface border border-cozia-line text-cozia-ink font-medium hover:bg-cozia-surface-2 transition-all"
-          >
-            GitHub Repository
-          </a>
-        </div>
+                  <VideoShelfRow
+                    title="Trending Family Picks"
+                    videos={familyPicks.length > 0 ? familyPicks : videos}
+                    onSelectVideo={(v) => setSelectedVideo(v)}
+                    onToggleSave={handleToggleSave}
+                    savedVideoIds={savedVideoIds}
+                  />
 
-        {/* Feature Cards Grid */}
-        <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-24 text-left">
-          <div className="p-6 rounded-2xl bg-cozia-surface border border-cozia-line hover:border-cozia-gold/30 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-cozia-gold/10 flex items-center justify-center text-cozia-gold mb-4">
-              <Film className="w-5 h-5" />
+                  <VideoShelfRow
+                    title="Trending Shorts & Clips"
+                    videos={shortsAndClips.length > 0 ? shortsAndClips : videos}
+                    onSelectVideo={(v) => setSelectedVideo(v)}
+                    onToggleSave={handleToggleSave}
+                    savedVideoIds={savedVideoIds}
+                  />
+
+                  {educationalVideos.length > 0 && (
+                    <VideoShelfRow
+                      title="Educational & Science Discoveries"
+                      videos={educationalVideos}
+                      onSelectVideo={(v) => setSelectedVideo(v)}
+                      onToggleSave={handleToggleSave}
+                      savedVideoIds={savedVideoIds}
+                    />
+                  )}
+
+                  {vimeoFilms.length > 0 && (
+                    <VideoShelfRow
+                      title="Vimeo Short Films & Documentaries"
+                      videos={vimeoFilms}
+                      onSelectVideo={(v) => setSelectedVideo(v)}
+                      onToggleSave={handleToggleSave}
+                      savedVideoIds={savedVideoIds}
+                    />
+                  )}
+                </div>
+              )}
             </div>
-            <h3 className="font-serif text-lg font-medium mb-2">Netflix-Style Curation</h3>
-            <p className="text-cozia-ink-dim text-sm leading-relaxed">
-              Curated rows & hero banners over YouTube content — structured, clean, and engaging.
-            </p>
-          </div>
+          )}
 
-          <div className="p-6 rounded-2xl bg-cozia-surface border border-cozia-line hover:border-cozia-gold/30 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-cozia-teal/10 flex items-center justify-center text-cozia-teal mb-4">
-              <ShieldCheck className="w-5 h-5" />
+          {currentView === 'shorts' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex items-center justify-between border-b border-cozia-line pb-4">
+                <h1 className="font-serif text-2xl font-medium tracking-tight">Trending Shorts & Clips</h1>
+                <span className="text-xs font-mono text-cozia-ink-faint">Short-form videos</span>
+              </div>
+              <VideoShelfRow
+                title="Top Shorts"
+                videos={shortsAndClips.length > 0 ? shortsAndClips : videos}
+                onSelectVideo={(v) => setSelectedVideo(v)}
+                onToggleSave={handleToggleSave}
+                savedVideoIds={savedVideoIds}
+              />
             </div>
-            <h3 className="font-serif text-lg font-medium mb-2">Family-Safe by Design</h3>
-            <p className="text-cozia-ink-dim text-sm leading-relaxed">
-              First-class curation pipeline and safety checks ensuring high quality content only.
-            </p>
-          </div>
+          )}
 
-          <div className="p-6 rounded-2xl bg-cozia-surface border border-cozia-line hover:border-cozia-gold/30 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-cozia-gold/10 flex items-center justify-center text-cozia-gold mb-4">
-              <Users className="w-5 h-5" />
+          {currentView === 'profile' && (
+            <PublicProfile profile={profile} onNavigateEdit={() => handleNavigate('edit-profile')} />
+          )}
+
+          {currentView === 'edit-profile' && <EditProfile onBack={() => handleNavigate('profile')} />}
+
+          {currentView === 'moderation' && <ModerationQueue />}
+
+          {currentView === 'live' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="p-8 text-center rounded-3xl bg-cozia-surface border border-cozia-line space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 mx-auto flex items-center justify-center">
+                  <Radio className="w-6 h-6" />
+                </div>
+                <h2 className="font-serif text-xl font-medium">Twitch Live Broadcasts</h2>
+                <p className="text-xs text-cozia-ink-dim max-w-md mx-auto">
+                  Watch live streams from verified family-friendly Twitch broadcasters.
+                </p>
+              </div>
+              {twitchLiveStreams.length > 0 && (
+                <VideoShelfRow
+                  title="Live Now"
+                  videos={twitchLiveStreams}
+                  onSelectVideo={(v) => setSelectedVideo(v)}
+                  onToggleSave={handleToggleSave}
+                  savedVideoIds={savedVideoIds}
+                />
+              )}
             </div>
-            <h3 className="font-serif text-lg font-medium mb-2">Community Social Layer</h3>
-            <p className="text-cozia-ink-dim text-sm leading-relaxed">
-              See what friends and community members are watching, react to posts, and share comments.
-            </p>
-          </div>
-        </div>
-      </main>
+          )}
 
-      {/* Footer */}
-      <footer className="border-t border-cozia-line py-8 px-6 text-center text-xs text-cozia-ink-faint">
-        <p>Cozia &copy; 2026 — Built with React, Vite & Supabase.</p>
-      </footer>
+          {currentView === 'my-list' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex items-center justify-between border-b border-cozia-line pb-4">
+                <div>
+                  <h1 className="font-serif text-2xl font-medium tracking-tight">My Saved List</h1>
+                  <p className="text-xs text-cozia-ink-dim mt-1">Bookmarked curated videos for fast watching.</p>
+                </div>
+                <span className="px-3 py-1 text-xs font-mono font-bold rounded-full bg-cozia-gold/20 text-cozia-gold">
+                  {savedVideosList.length} Saved
+                </span>
+              </div>
+
+              {savedVideosList.length === 0 ? (
+                <div className="p-12 text-center rounded-3xl bg-cozia-surface border border-cozia-line space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-cozia-gold/10 text-cozia-gold mx-auto flex items-center justify-center">
+                    <Bookmark className="w-7 h-7" />
+                  </div>
+                  <h2 className="font-serif text-2xl font-medium">Your List is Empty</h2>
+                  <p className="text-xs text-cozia-ink-dim max-w-md mx-auto">
+                    Click the bookmark icon on any video card to save it to your personal list.
+                  </p>
+                  <button
+                    onClick={() => handleNavigate('home')}
+                    className="px-5 py-2.5 rounded-xl bg-cozia-gold text-cozia-bg text-xs font-semibold hover:bg-cozia-gold-dim transition-all"
+                  >
+                    Browse Catalog
+                  </button>
+                </div>
+              ) : (
+                <VideoShelfRow
+                  title="Your Saved Videos"
+                  videos={savedVideosList}
+                  onSelectVideo={(v) => setSelectedVideo(v)}
+                  onToggleSave={handleToggleSave}
+                  savedVideoIds={savedVideoIds}
+                />
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Mobile Bottombar */}
+      <BottomNav currentView={currentView} onNavigate={handleNavigate} />
+
+      {/* Modals & Player Overlays */}
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <NominateModal isOpen={isNominateOpen} onClose={() => setIsNominateOpen(false)} />
+      <ParentalPinModal
+        isOpen={pinModalState.isOpen}
+        onClose={() => setPinModalState({ ...pinModalState, isOpen: false })}
+        mode={pinModalState.mode}
+      />
+      <PlayerModal
+        video={selectedVideo}
+        allVideos={videos}
+        onClose={() => setSelectedVideo(null)}
+        onSelectVideo={(v) => setSelectedVideo(v)}
+        onToggleSave={handleToggleSave}
+      />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
