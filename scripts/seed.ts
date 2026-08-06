@@ -1,5 +1,5 @@
 import { supabase } from '../src/lib/supabase';
-import { SEED_CURATED_VIDEOS } from '../src/lib/curation';
+import { SEED_CURATED_VIDEOS } from './seed-data';
 
 async function seed() {
   console.log('Seeding initial curated videos into Supabase...');
