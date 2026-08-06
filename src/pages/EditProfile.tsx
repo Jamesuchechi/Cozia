@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Globe, Twitter, Youtube, Key, Check, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 
 interface EditProfileProps {
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export const EditProfile: React.FC<EditProfileProps> = ({ onBack }) => {
+  const navigate = useNavigate();
   const { profile, updateProfile, setParentalPin } = useAuth();
+
+  const handleBackClick = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(-1);
+    }
+  };
 
   const [displayName, setDisplayName] = useState<string>(profile?.displayName || '');
   const [username, setUsername] = useState<string>(profile?.username || '');
@@ -53,7 +63,7 @@ export const EditProfile: React.FC<EditProfileProps> = ({ onBack }) => {
       {/* Top Header */}
       <div className="flex items-center justify-between border-b border-cozia-line pb-4">
         <button
-          onClick={onBack}
+          onClick={handleBackClick}
           className="flex items-center gap-2 text-xs font-semibold text-cozia-ink-dim hover:text-cozia-ink transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

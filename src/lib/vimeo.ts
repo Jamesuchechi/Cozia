@@ -64,7 +64,8 @@ export async function fetchVimeoMetadata(urlOrId: string): Promise<FetchedVimeoM
     throw new Error('Invalid Vimeo URL or Video ID');
   }
 
-  const accessToken = import.meta.env.VITE_VIMEO_PERSONAL_ACCESS_TOKEN;
+  const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : (typeof process !== 'undefined' ? process.env : {});
+  const accessToken = (env.VITE_VIMEO_PERSONAL_ACCESS_TOKEN as string) || '';
 
   // 1. Try Vimeo API v3 with Personal Access Token if configured
   if (accessToken && accessToken !== 'your-vimeo-access-token') {

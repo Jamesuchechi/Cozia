@@ -50,6 +50,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         <img
           src={video.thumbnailUrl}
           alt={video.title}
+          loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
 
@@ -78,6 +79,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         {/* Save Bookmark Button Top-Left */}
         <button
           onClick={handleSaveClick}
+          aria-label={saved ? `Remove ${video.title} from list` : `Save ${video.title} to list`}
           className={`absolute top-2 left-2 p-1.5 rounded-xl border backdrop-blur-md transition-all shadow-md ${
             saved
               ? 'bg-cozia-gold text-cozia-bg border-cozia-gold'

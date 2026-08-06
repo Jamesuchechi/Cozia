@@ -69,7 +69,8 @@ export async function fetchYouTubeMetadata(urlOrId: string): Promise<FetchedYouT
     throw new Error('Invalid YouTube URL or Video ID');
   }
 
-  const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+  const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : (typeof process !== 'undefined' ? process.env : {});
+  const apiKey = (env.VITE_YOUTUBE_API_KEY as string) || '';
 
   // 1. Try YouTube Data API v3 if API key is configured
   if (apiKey && apiKey !== 'your-youtube-api-key') {

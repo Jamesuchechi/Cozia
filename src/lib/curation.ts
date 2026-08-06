@@ -292,7 +292,19 @@ export const SEED_MODERATION_QUEUE: ModerationItem[] = [
 ];
 
 /**
- * Fetch curated videos from Supabase or fallback to seed data.
+ * Shuffle an array in-place using Fisher-Yates algorithm for catalog randomization on refresh.
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Fetch curated videos from Supabase, applying randomized slice selection on refresh.
  */
 export async function getCuratedVideos(
   providerFilter?: VideoProvider | 'all',
@@ -306,50 +318,56 @@ export async function getCuratedVideos(
     }
 
     const { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      // Filter seed data
-      return SEED_CURATED_VIDEOS.filter((v) => {
-        if (providerFilter && providerFilter !== 'all' && v.provider !== providerFilter) return false;
-        if (categoryFilter && categoryFilter !== 'All') {
-          const matchCategory = v.category === categoryFilter;
-          const matchTag = v.tags.some((t) => t.toLowerCase() === categoryFilter.toLowerCase());
-          if (!matchCategory && !matchTag) return false;
-        }
-        return true;
-      });
+    if (error) {
+      console.error('Supabase query error in getCuratedVideos:', error);
+      throw error;
     }
 
-    return data.map((item) => ({
-      id: item.id,
-      provider: item.provider as VideoProvider,
-      providerVideoId: item.provider_video_id,
-      title: item.title,
-      description: item.description,
-      thumbnailUrl: item.thumbnail_url,
-      duration: item.duration,
-      category: item.category,
-      tags: item.tags || [],
-      safetyStatus: item.safety_status,
-      addedBy: item.added_by,
-      addedAt: item.added_at,
-      isLive: item.is_live,
-    }));
-  } catch (err) {
-    console.warn('Using seed dataset fallback:', err);
-    return SEED_CURATED_VIDEOS.filter((v) => {
+    let videos: CuratedVideo[] = [];
+
+    if (data && data.length > 0) {
+      videos = data.map((item) => ({
+        id: item.id,
+        provider: item.provider as VideoProvider,
+        providerVideoId: item.provider_video_id,
+        title: item.title,
+        description: item.description,
+        thumbnailUrl: item.thumbnail_url,
+        duration: item.duration,
+        category: item.category,
+        tags: item.tags || [],
+        safetyStatus: item.safety_status,
+        addedBy: item.added_by,
+        addedAt: item.added_at,
+        isLive: item.is_live,
+      }));
+    } else {
+      // If DB has zero approved rows (e.g. before initial ingestion job), use seed dataset
+      videos = [...SEED_CURATED_VIDEOS];
+    }
+
+    // Apply category filtering
+    let filtered = videos.filter((v) => {
       if (providerFilter && providerFilter !== 'all' && v.provider !== providerFilter) return false;
       if (categoryFilter && categoryFilter !== 'All') {
-        const matchCategory = v.category === categoryFilter;
+        const matchCategory = v.category.toLowerCase() === categoryFilter.toLowerCase();
         const matchTag = v.tags.some((t) => t.toLowerCase() === categoryFilter.toLowerCase());
         if (!matchCategory && !matchTag) return false;
       }
       return true;
     });
+
+    // Return randomized slice so feed changes on refresh
+    return shuffleArray(filtered);
+  } catch (err: any) {
+    console.error('Failed to fetch curated videos:', err);
+    return [];
   }
 }
 
 /**
- * Curate and publish a video into Supabase curated_videos table
+ * Curate and publish a video into Supabase curated_videos table.
+ * Returns success: false with the error message if the Supabase write fails.
  */
 export async function curateVideo(video: CuratedVideo): Promise<{ success: boolean; error?: string }> {
   try {
@@ -367,12 +385,12 @@ export async function curateVideo(video: CuratedVideo): Promise<{ success: boole
       is_live: video.isLive || false,
     });
 
-    if (error) throw error;
+    if (error) {
+      return { success: false, error: error.message };
+    }
     return { success: true };
   } catch (err: any) {
-    console.warn('Fallback adding video to seed array:', err);
-    SEED_CURATED_VIDEOS.unshift(video);
-    return { success: true };
+    return { success: false, error: err?.message || String(err) };
   }
 }
 

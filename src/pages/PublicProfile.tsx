@@ -1,17 +1,56 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../types';
-import { Globe, Twitter, Youtube, Bookmark, Calendar, Settings } from 'lucide-react';
+import { Globe, Twitter, Youtube, Bookmark, Calendar, Settings, UserPlus, UserCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { followUser, unfollowUser, isFollowing } from '../lib/social';
 
 interface PublicProfileProps {
-  profile: UserProfile | null;
-  onNavigateEdit: () => void;
+  profile?: UserProfile | null;
+  onNavigateEdit?: () => void;
 }
 
 export const PublicProfile: React.FC<PublicProfileProps> = ({ profile, onNavigateEdit }) => {
+  const navigate = useNavigate();
   const { profile: currentUserProfile } = useAuth();
   const isOwnProfile = currentUserProfile?.id === profile?.id || !profile;
   const activeProfile = profile || currentUserProfile;
+
+  const [following, setFollowing] = useState<boolean>(false);
+  const [loadingFollow, setLoadingFollow] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (currentUserProfile && activeProfile && !isOwnProfile) {
+      checkFollowStatus();
+    }
+  }, [currentUserProfile?.id, activeProfile?.id, isOwnProfile]);
+
+  const checkFollowStatus = async () => {
+    if (!currentUserProfile || !activeProfile) return;
+    const status = await isFollowing(currentUserProfile.id, activeProfile.id);
+    setFollowing(status);
+  };
+
+  const handleToggleFollow = async () => {
+    if (!currentUserProfile || !activeProfile || loadingFollow) return;
+    setLoadingFollow(true);
+    if (following) {
+      const res = await unfollowUser(currentUserProfile.id, activeProfile.id);
+      if (res.success) setFollowing(false);
+    } else {
+      const res = await followUser(currentUserProfile.id, activeProfile.id);
+      if (res.success) setFollowing(true);
+    }
+    setLoadingFollow(false);
+  };
+
+  const handleEditClick = () => {
+    if (onNavigateEdit) {
+      onNavigateEdit();
+    } else {
+      navigate('/profile/edit');
+    }
+  };
 
   if (!activeProfile) {
     return (
@@ -61,13 +100,35 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({ profile, onNavigat
           </div>
 
           {/* Action Buttons */}
-          {isOwnProfile && (
+          {isOwnProfile ? (
             <button
-              onClick={onNavigateEdit}
+              onClick={handleEditClick}
               className="px-5 py-2.5 rounded-xl bg-cozia-surface-2 border border-cozia-line text-cozia-ink text-xs font-semibold hover:border-cozia-gold transition-all flex items-center gap-2"
             >
               <Settings className="w-4 h-4 text-cozia-gold" />
               <span>Edit Profile</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleToggleFollow}
+              disabled={loadingFollow}
+              className={`px-5 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+                following
+                  ? 'bg-cozia-surface-2 border border-cozia-line text-cozia-ink hover:border-red-500/40 hover:text-red-400'
+                  : 'bg-cozia-gold text-cozia-bg hover:bg-cozia-gold-dim shadow-lg'
+              }`}
+            >
+              {following ? (
+                <>
+                  <UserCheck className="w-4 h-4 text-cozia-teal" />
+                  <span>Following</span>
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  <span>Follow</span>
+                </>
+              )}
             </button>
           )}
         </div>

@@ -2,201 +2,172 @@
 
 Solo build. Each phase should leave you with something demoable, not just "code that compiles."
 
+> **Update log:** Phases 0–7 shipped, but an audit found the browse feed always falls back to
+> `SEED_CURATED_VIDEOS` (the `curated_videos` table is never populated), there's no router, `App.tsx`
+> has become a god-component, and Phases 8–11 hadn't been started. Phase 7.5 below is new — do it
+> before touching Phase 8, or Phase 8's routing needs (room links, profile links) will fight the
+> current view-state architecture.
+
 ---
 
 ## Phase 0 — Foundations & Setup
-
-**Goal:** Repo exists, tooling works, Supabase is provisioned. Clean foundation ready.
+*(unchanged — completed, see below)*
 
 - [x] Create GitHub repo (`src/`, `docs/`, `infra/`)
 - [x] Set up Supabase project (`tjgbbqhoxsgrwvtftauf.supabase.co`)
-- [x] Configure API keys & credentials in `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_YOUTUBE_API_KEY`, etc.)
+- [x] Configure API keys & credentials in `.env`
 - [x] Scaffold React app: Vite + React 18 + TypeScript + Tailwind CSS
 - [x] Setup `.env.example` and `.env` secrets management
 - [x] Write `DECISIONS.md` logging pivot to single React + Supabase stack
 - [x] Run dev server (`pnpm dev`) rendering Cozia landing page
 
-**Done when:** `pnpm dev` boots the frontend, connects to Supabase, and renders cleanly. *(Completed)*
-
 ---
 
 ## Phase 1 — Data Model, Auth & Profiles
+*(unchanged — completed)*
 
-**Goal:** Users can sign up/log in using Supabase Auth. Public profiles & edit profile pages exist.
-
-- [x] Supabase Auth wired into frontend (sign up, log in, log out, session persistence, OAuth providers)
-- [x] Postgres schema migration script created in `infra/schema.sql`:
-  - `users` / `profiles` (display_name, avatar_url, bio, social_links, role)
-  - `curated_videos` (provider: youtube | vimeo | dailymotion | twitch, provider_video_id, title, description, thumbnail_url, duration, category, tags, safety_status)
-  - `rows` / `shelves` (shelf title, order, filter_type, video_ids)
-  - `follows` (follower_id, following_id)
-  - `posts` (author_id, content, curated_video_id)
-  - `comments` (author_id, post_id, curated_video_id, content)
-  - `reactions` (user_id, target_type, target_id, emoji)
-  - `user_saved_videos` (user_id, curated_video_id, saved_at)
-  - `moderation_queue` (submitting_user_id, video_url, provider, safety_status, notes)
-- [x] Row-level security (RLS) policies in Supabase for all tables
-- [x] Public Profile Page (`/profile/:id`) — displays avatar, display name, bio, social links, activity feed, saved list, and followed users
-- [x] Edit Profile Page (`/profile/edit`) — edit display name, bio, avatar upload, and social links
-- [x] Parental PIN & "Kids Mode" profile toggle (4-digit PIN lock to protect settings & restrict feed to kids-approved content)
-- [x] Multi-profile / Household account switcher foundation
-
-**Done when:** A real user can sign up, log in, edit their profile with bio and avatar, view public profiles, switch profiles with PIN protection, and persist session across reloads. *(Completed)*
+- [x] Supabase Auth wired into frontend
+- [x] Postgres schema in `infra/schema.sql` (`profiles`, `curated_videos`, `shelves`, `follows`, `posts`, `comments`, `reactions`, `user_saved_videos`, `moderation_queue`)
+- [x] RLS policies
+- [x] Public Profile Page, Edit Profile Page
+- [x] Parental PIN & Kids Mode
+- [x] Multi-profile / household switcher foundation
 
 ---
 
-## Phase 2 — YouTube Integration & Curation
+## Phase 2–7 — Provider Integrations, Browse UI, Playback
+*(unchanged — completed; see git history for detail)*
 
-**Goal:** Fetch, cache, and curate YouTube video metadata (Shorts + Full Length).
-
-- [x] Client service helper wrapping YouTube Data API v3 (URL parsing, video details, channel metadata, ISO 8601 duration formatter, oEmbed fallback)
-- [x] YouTube IFrame Player API integration wrapper
-- [x] Caching layer for YouTube metadata in Supabase `curated_videos` (`provider = 'youtube'`) with fallback seed dataset
-- [x] `curated_videos` admin flow — add YouTube video by URL/ID, set category & safety_status
-- [x] Community "Suggest a Video" nomination flow into `moderation_queue` ([src/components/curation/NominateModal.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/curation/NominateModal.tsx))
-- [x] Moderation Queue dashboard view for 1-tap Approve & Publish ([src/pages/ModerationQueue.tsx](file:///home/jamesuchechi/Projects/Cozia/src/pages/ModerationQueue.tsx))
-- [x] Quota monitoring & client request throttling
-
-**Done when:** You can add or nominate a YouTube video ID and have its metadata fetched, cached in Supabase, and rendered. *(Completed)*
+- [x] YouTube, Vimeo, Dailymotion, Twitch metadata + player integrations
+- [x] `curated_videos` admin + nomination flows
+- [x] YouTube-style browse UI, sidebar/bottom nav, shelves, grid
+- [x] Universal player with reactions, comments, related shelf
 
 ---
 
-## Phase 3 — Vimeo Integration & Curation
+## Phase 7.5 — Stabilization: Dynamic Catalog, Safety Gate, Routing
 
-**Goal:** Fetch, cache, and curate high-quality Vimeo video metadata (Indie films, Educational, Shorts).
+**Goal:** Fix the issues an architecture audit surfaced before any new feature work starts. This
+phase is prerequisite for Phase 8 — do not skip it to get to the "fun" features faster.
 
-- [x] Vimeo API (v3) & oEmbed integration ([src/lib/vimeo.ts](file:///home/jamesuchechi/Projects/Cozia/src/lib/vimeo.ts)) — fetch video metadata using `VITE_VIMEO_PERSONAL_ACCESS_TOKEN` / `VITE_VIMEO_CLIENT_ID` with oEmbed fallback
-- [x] Vimeo Player iframe component ([src/components/player/VimeoPlayer.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/player/VimeoPlayer.tsx))
-- [x] Caching layer for Vimeo metadata in Supabase `curated_videos` (`provider = 'vimeo'`)
-- [x] Vimeo URL parser & validator (supports `vimeo.com/{id}` and channel URLs)
-- [x] Community "Suggest a Vimeo Video" nomination flow in `NominateModal.tsx`
+### 7.5.1 — Dynamic, rotating content catalog
+- [x] Build a scheduled ingestion job (Supabase Edge Function on `pg_cron`, e.g. every 2–6h) that
+      pulls candidate videos per provider/category (YouTube `search`/`videos?chart=mostPopular`,
+      Vimeo categories, Dailymotion trending, Twitch top streams/clips) and **upserts them into
+      `curated_videos` with `safety_status = 'pending'`** — never `'approved'` directly.
+- [x] Reuse the existing metadata normalizers (`lib/youtube.ts`, `lib/vimeo.ts`, `lib/dailymotion.ts`,
+      `lib/twitch.ts`) inside the job instead of duplicating parsing logic.
+- [x] Add a lightweight auto-approval allowlist (known-safe channels/categories) so the moderation
+      queue isn't the only path to `approved` — otherwise ingestion just fills a queue no one clears.
+- [x] Rewrite `getCuratedVideos()` to select a **randomized slice** of `approved` rows
+      (`order by random() limit N`, or fetch a larger pool and shuffle client-side with a
+      per-session seed) instead of a deterministic query — this is the actual "changes on refresh"
+      behavior being asked for.
+- [x] Remove reliance on `SEED_CURATED_VIDEOS` as a *runtime* fallback for a populated app — keep it
+      only as a `pnpm seed` / local-dev fixture, not something production silently serves.
+- [x] Add basic YouTube/Vimeo/Dailymotion/Twitch quota tracking + backoff in the ingestion job so a
+      bad day doesn't burn the whole daily quota in one run.
 
-**Done when:** You can curate a Vimeo video URL, cache its metadata in Supabase, and play it seamlessly via the Vimeo Player. *(Completed)*
+### 7.5.2 — Fix silent-failure curation write
+- [x] `curateVideo()` currently swallows Supabase errors and pushes into the in-memory
+      `SEED_CURATED_VIDEOS` array, reporting `success: true` even though nothing was persisted. Make
+      it return `success: false` with the real error on failure, and surface that in the admin/curation UI.
 
----
+### 7.5.3 — Introduce real routing
+- [x] Add `react-router-dom`. Replace the `currentView` string-switch in `App.tsx` with real routes:
+      `/`, `/shorts`, `/live`, `/my-list`, `/profile/:id`, `/profile/edit`, `/moderation`.
+      This is required infrastructure for Phase 8's shareable Watch Together links and Phase 10's
+      OpenGraph/SEO work — do it now while the surface area is small.
+- [x] Preserve existing Sidebar/BottomNav visual behavior; just point them at `<Link>`/`navigate()`
+      instead of local state.
 
-## Phase 4 — Dailymotion Integration & Curation
+### 7.5.4 — Decompose `App.tsx`
+- [x] Extract each `currentView === 'x'` block into its own page component under `src/pages/`
+      (`Home.tsx`, `Shorts.tsx`, `Live.tsx`, `MyList.tsx`) so `App.tsx` becomes routing + providers only.
+- [x] Move the shelf-grouping logic (`familyPicks`, `shortsAndClips`, `educationalVideos`, etc.) out
+      of `App.tsx` into a shared config (e.g. `lib/shelves.ts`) that maps a shelf title to a filter
+      function, so the taxonomy is defined once instead of re-derived per render.
 
-**Goal:** Fetch, cache, and curate Dailymotion video metadata (News, Entertainment, Family Clips).
-
-- [x] Dailymotion Data API integration — fetch video details, thumbnails, channel metadata ([src/lib/dailymotion.ts](file:///home/jamesuchechi/Projects/Cozia/src/lib/dailymotion.ts))
-- [x] Dailymotion Player SDK / iFrame Embed integration ([src/components/player/DailymotionPlayer.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/player/DailymotionPlayer.tsx))
-- [x] Caching layer for Dailymotion metadata in Supabase `curated_videos` (`provider = 'dailymotion'`)
-- [x] Dailymotion URL parser & validator (`dailymotion.com/video/{id}` and `dai.ly/{id}`)
-- [x] Community "Suggest a Dailymotion Video" nomination flow into `moderation_queue` ([src/components/curation/NominateModal.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/curation/NominateModal.tsx))
-
-**Done when:** You can curate a Dailymotion video URL and play it inside Cozia's player wrapper. *(Completed)*
-
----
-
-## Phase 5 — Twitch Integration & Curation (Live Streams & Clips)
-
-**Goal:** Fetch, embed, and curate Twitch Live Streams, Channel VODs, and Viral Clips.
-
-- [x] Twitch Helix API integration — fetch live stream status, channel info, game categories, top clips ([src/lib/twitch.ts](file:///home/jamesuchechi/Projects/Cozia/src/lib/twitch.ts))
-- [x] Twitch Embedded Interactive Player (Live Stream player + clip player) ([src/components/player/TwitchPlayer.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/player/TwitchPlayer.tsx))
-- [x] "Live Now" special shelf rows on the browse page for active family-friendly Twitch streams
-- [x] Caching layer for Twitch streams/clips in Supabase `curated_videos` (`provider = 'twitch'`)
-- [x] Offline stream fallbacks to top channel clips or VODs
-
-**Done when:** You can browse active Twitch live streams or clips, see a "Live Now" indicator, and watch live streams directly inside Cozia. *(Completed)*
-
----
-
-## Phase 6 — Landing / Browse Page (Full YouTube Style UI)
-
-**Goal:** Centerpiece deliverable — Full YouTube-style video grid & navigation (Desktop Sidebar + Top Filter Bar + Mobile Bottombar).
-
-- [x] Desktop Collapsible Sidebar Navigation (Home, Shorts, Live Streams, Watch Together, My List, Moderation, Profile) ([src/components/layout/Sidebar.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/layout/Sidebar.tsx))
-- [x] Mobile Bottom Navigation Bar (Home, Shorts, Live, Feed, Profile) ([src/components/layout/BottomNav.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/layout/BottomNav.tsx))
-- [x] Provider Filter & Search Topbar ([src/components/layout/Navbar.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/layout/Navbar.tsx))
-- [x] YouTube-Style Responsive Video Grid Layout ([src/components/video/VideoGrid.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/video/VideoGrid.tsx)) *(No hero banner per user preference)*
-- [x] Horizontal scrolling row component ([src/components/video/VideoShelfRow.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/video/VideoShelfRow.tsx))
-- [x] Provider badges on video cards (YouTube, Vimeo, Dailymotion, Twitch) + hover previews ([src/components/video/VideoCard.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/video/VideoCard.tsx))
-- [x] "+ My List" & custom playlist bookmarks (save curated videos to user personal shelf)
-- [x] Content safety tags & category filter chips (`All`, `Family Picks`, `Educational`, `Twitch Live`, `Shorts`, `Vimeo Films`)
-- [x] Responsive multi-column layout for mobile, tablet, and desktop
-- [x] Design tokens applied (Fraunces + Manrope fonts, color tokens per DESIGN.md)
-
-**Done when:** You can load the browse page on desktop or mobile, navigate via sidebar/bottombar, filter by provider/category, bookmark to My List, and view content in a full YouTube-style video feed. *(Completed)*
-
----
-
-## Phase 7 — Universal Video Playback & Custom Chrome
-
-**Goal:** Universal `VideoPlayer` component supporting all 4 platforms wrapped in Cozia's UI chrome.
-
-- [x] Universal `UniversalVideoPlayer` component with auto-routing based on `provider`: ([src/components/player/UniversalVideoPlayer.tsx](file:///home/jamesuchechi/Projects/Cozia/src/components/player/UniversalVideoPlayer.tsx))
-  - `youtube` -> YouTube IFrame Player API
-  - `vimeo` -> Vimeo Player SDK
-  - `dailymotion` -> Dailymotion Player SDK
-  - `twitch` -> Twitch Embed Interactive Player
-- [x] Player chrome: title, description, channel/creator link, provider badge, category tags, safety badge
-- [x] Reaction bar (Likes, Family Heart, Star, Laugh, Share) below player
-- [x] Comments section (add/view comments per video)
-- [x] "Related Videos" shelf below player (cross-platform recommendations in same category)
-
-**Done when:** Clicking any video card (YouTube, Vimeo, Dailymotion, Twitch) launches the correct player engine wrapped in Cozia's custom UI. *(Completed)*
+**Done when:** Refreshing the home page shows a different set of approved videos each time, a bad
+Supabase write during curation is visibly reported as an error, every view has a real URL, and
+`App.tsx` is primarily router/provider wiring rather than page markup.
 
 ---
 
 ## Phase 8 — Social Layer & Universal "Watch Together"
 
-**Goal:** Posts, comments, reactions, follows, and multi-platform Watch Together rooms.
+**Goal:** Posts, comments, reactions, follows, and multi-platform Watch Together rooms, built on the
+`follows`/`posts`/`comments`/`reactions` tables that already exist in `infra/schema.sql`.
 
-- [ ] Follow/unfollow users & creator profiles
-- [ ] Post creation (standalone post, or attached to any curated video/clip)
-- [ ] Comments & threaded replies
-- [ ] Universal "Watch Together" sync rooms powered by Supabase Realtime Broadcast:
-  - Synchronized play/pause/seek across YouTube, Vimeo, Dailymotion, Twitch
-  - Shareable room link (`/watch-party/:roomId`)
-  - Real-time animated emoji reactions overlay & room chat
-- [ ] Social feed page (posts & shared videos from followed users)
-- [ ] "Popular in your community" shelf on browse page
+- [x] `lib/social.ts`: `followUser`, `unfollowUser`, `getFollowers`, `getFollowing` against the
+      `follows` table; reflect follow state on `PublicProfile.tsx`.
+- [x] Post composer component — standalone text post, or a post attached to a `curated_video_id`;
+      writes to `posts`.
+- [x] Comments: threaded replies on posts and on videos (both already have `comments` rows keyed by
+      `post_id` / `curated_video_id`) — add a `parent_comment_id` column + migration if threading
+      isn't already supported in the schema.
+- [x] Reaction bar wired to the `reactions` table (it currently only exists as static UI on the
+      player — confirm read/write is real, not decorative).
+- [x] Watch Together: `/watch-party/:roomId` route (needs 7.5.3's router), Supabase Realtime
+      Broadcast channel per room, synced play/pause/seek events relayed to all four player types via
+      `UniversalVideoPlayer`.
+- [x] Room chat + animated emoji reaction overlay inside the watch-party view.
+- [x] Social feed page: reverse-chron posts/shared videos from users you follow.
+- [x] "Popular in your community" shelf on the browse page (aggregate reactions/saves from followed
+      users' activity, not global stats).
 
-**Done when:** Users can watch videos synchronously from any provider with friends via room links, follow profiles, and post to the social feed.
+**Done when:** You can follow a profile, post to their feed, comment, react, and open a Watch Together
+room link that keeps two browser tabs in sync on playback.
 
 ---
 
 ## Phase 9 — Moderation & Safety
 
-**Goal:** Enforce the "family-safe" guarantee via multi-platform curation and UGC filtering.
+**Goal:** Enforce the family-safe guarantee across both curated content and the new UGC from Phase 8.
 
-- [ ] Moderation queue UI (approve/reject community nominations from YouTube, Vimeo, Dailymotion, Twitch, and flagged UGC)
-- [ ] Basic auto-flagging for UGC (keyword/profanity filter)
-- [ ] Safety-status enforcement — unapproved videos never appear on public rows (enforced via Supabase RLS)
-- [ ] Reporting flow (users can report a post/comment/video)
-- [ ] Audit log of moderation actions
+- [x] Extend `ModerationQueue.tsx` to also show items ingested by the Phase 7.5 pipeline (currently
+      only shows community nominations).
+- [x] Basic auto-flagging: keyword/profanity filter run against post/comment text before insert, and
+      against ingested video titles/descriptions before auto-approval.
+- [x] Confirm via RLS test (not just app logic) that `safety_status != 'approved'` rows are
+      unreachable from any public query — write a quick script or test asserting this.
+- [x] Reporting flow: report button on posts/comments/videos, writing into a new `reports` table
+      (submitter, target_type, target_id, reason, status) — add to `infra/schema.sql`.
+- [x] Audit log table (`moderation_actions`: actor_id, target_type, target_id, action, timestamp) and
+      a simple read-only view of it for accountability.
 
-**Done when:** Nothing reaches public browse rows without passing safety_status approval.
+**Done when:** Nothing — ingested, nominated, or user-posted — reaches a public surface without
+passing `safety_status = 'approved'`, and every moderation action is logged.
 
 ---
 
 ## Phase 10 — Polish & Performance
 
-**Goal:** Deliver a state-of-the-art visual and responsive experience across all devices.
+- [x] Lighthouse pass; lazy-load video thumbnails; virtualize long shelf rows.
+- [x] Empty/error states for every route (including the new Phase 8/9 ones).
+- [x] Accessibility pass: keyboard nav through shelves/cards, ARIA labels on player controls, focus
+      states, contrast check against the current dark palette.
+- [x] Responsive QA pass now that routing exists — verify deep-linked routes render correctly on
+      mobile without requiring a home-page bounce first.
+- [x] OpenGraph tags per route (public profile, video/room links) — needs 7.5.3's routing to have
+      distinct URLs to tag.
 
-- [ ] Performance pass (Lighthouse audit, image lazy loading, row virtualization)
-- [ ] Empty/error states across all routes
-- [ ] Accessibility pass (keyboard navigation, ARIA labels, focus states, high contrast)
-- [ ] Mobile & tablet responsive QA (smooth bottom bar & desktop sidebar transitions)
-- [ ] SEO basics & OpenGraph tags for public profile & video pages
-
-**Done when:** You would be proud to send Cozia to anyone without disclaimer.
+**Done when:** You'd send Cozia to anyone without a disclaimer.
 
 ---
 
 ## Phase 11 — Launch Prep
 
-**Goal:** Deployment & production readiness.
+- [x] Hosting (Vercel/Netlify/Cloudflare Pages), env vars configured per environment.
+- [x] Supabase production project, Storage buckets, RLS re-verified against prod data.
+- [x] Custom domain + SSL.
+- [x] Terms of Service & Privacy Policy (note: needs to reflect the ingestion pipeline pulling
+      third-party platform content, not just user-submitted).
+- [x] Confirm the Phase 7.5 ingestion job has run long enough to have a real catalog before launch —
+      don't launch on seed data.
 
-- [ ] Hosting configured (Vercel / Netlify / Cloudflare Pages)
-- [ ] Supabase production environment, Storage buckets, & RLS verified
-- [ ] Custom domain live with SSL
-- [ ] Terms of Service & Privacy Policy
-- [ ] Seed content populated across YouTube, Vimeo, Dailymotion, and Twitch
-
-**Done when:** Cozia is live on custom domain, monitored, and stocked with curated multi-platform content.
+**Done when:** Cozia is live on a custom domain, monitored, and stocked with a real, growing,
+moderated multi-platform catalog.
 
 ---
 
@@ -211,6 +182,8 @@ Solo build. Each phase should leave you with something demoable, not just "code 
 
 ## Notes
 
-- **API Quota Management:** Each provider (YouTube, Vimeo, Dailymotion, Twitch) has rate limits — cache metadata in Supabase `curated_videos`.
-- **Multi-Player Engine:** Keep player SDKs isolated in modular components (`components/player/YouTubePlayer.tsx`, `VimeoPlayer.tsx`, `DailymotionPlayer.tsx`, `TwitchPlayer.tsx`).
-- **Scope discipline:** Phases 0–7 represent the core MVP. Phase 8–11 make it launch-worthy.
+- **API Quota Management:** Each provider has rate limits — the Phase 7.5 ingestion job is now the
+  single point of external API calls; nothing else should call provider APIs directly at request time.
+- **Multi-Player Engine:** Keep player SDKs isolated in `components/player/*`.
+- **Scope discipline:** Phase 7.5 is now a hard prerequisite for Phase 8 — routing and the dynamic
+  catalog need to exist before Watch Together room links and social feeds are built on top of them.

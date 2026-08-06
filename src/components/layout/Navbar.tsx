@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, Shield, ShieldCheck, User, LogOut, Settings, ChevronDown, Menu, Plus, Mic } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { VideoProvider } from '../../types';
@@ -13,8 +14,6 @@ interface NavbarProps {
   onOpenPinModal: (mode: 'enter_pin' | 'set_pin') => void;
   onToggleSidebar: () => void;
   isSidebarCollapsed: boolean;
-  currentView: string;
-  onNavigate: (view: string) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -25,9 +24,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPinModal,
   onToggleSidebar,
   isSidebarCollapsed,
-  onNavigate,
 }) => {
   const { profile, isKidsMode, toggleKidsMode, hasParentalPin, signOut } = useAuth();
+  const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -60,6 +59,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  const profilePath = profile ? `/profile/${profile.id}` : '/profile/me';
+
   return (
     <>
       {/* Top Main Navigation Bar (Full Width Topbar) */}
@@ -74,13 +75,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
-          <button
-            onClick={() => onNavigate('home')}
+          <Link
+            to="/"
             className="flex items-center gap-2 font-serif text-2xl font-semibold tracking-tight hover:opacity-90 transition-opacity"
           >
             <span>Cozia</span>
             <span className="text-cozia-gold">.</span>
-          </button>
+          </Link>
         </div>
 
         {/* Center Wide Search Bar (YouTube Style) */}
@@ -159,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   <button
                     onClick={() => {
-                      onNavigate('profile');
+                      navigate(profilePath);
                       setShowProfileMenu(false);
                     }}
                     className="w-full text-left px-4 py-2.5 hover:bg-cozia-surface-2 flex items-center gap-2 text-cozia-ink transition-colors"
@@ -170,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                   <button
                     onClick={() => {
-                      onNavigate('edit-profile');
+                      navigate('/profile/edit');
                       setShowProfileMenu(false);
                     }}
                     className="w-full text-left px-4 py-2.5 hover:bg-cozia-surface-2 flex items-center gap-2 text-cozia-ink transition-colors"

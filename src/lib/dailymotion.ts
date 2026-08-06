@@ -99,15 +99,18 @@ export async function fetchDailymotionMetadata(urlOrId: string): Promise<Fetched
     const embedUrl = `https://www.dailymotion.com/video/${videoId}`;
     const oembedRes = await fetch(`https://www.dailymotion.com/services/oembed?url=${encodeURIComponent(embedUrl)}&format=json`);
     if (oembedRes.ok) {
-      const data = await oembedRes.json();
-      return {
-        videoId,
-        title: data.title || 'Dailymotion Video',
-        description: data.description || `Curated Dailymotion video by ${data.author_name || 'Dailymotion Creator'}`,
-        thumbnailUrl: data.thumbnail_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
-        authorName: data.author_name || 'Dailymotion Creator',
-        duration: formatSecondsToTime(data.duration),
-      };
+      const text = await oembedRes.text();
+      if (text.startsWith('{')) {
+        const data = JSON.parse(text);
+        return {
+          videoId,
+          title: data.title || 'Dailymotion Video',
+          description: data.description || `Curated Dailymotion video by ${data.author_name || 'Dailymotion Creator'}`,
+          thumbnailUrl: data.thumbnail_url || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
+          authorName: data.author_name || 'Dailymotion Creator',
+          duration: formatSecondsToTime(data.duration),
+        };
+      }
     }
   } catch (err) {
     console.warn('Dailymotion oEmbed fallback warning:', err);

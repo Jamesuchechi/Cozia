@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
   Flame,
@@ -14,31 +15,37 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
-  currentView: string;
-  onNavigate: (view: string) => void;
   isCollapsed: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isCollapsed }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const { isKidsMode, profile } = useAuth();
+  const location = useLocation();
 
   const mainNav = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'shorts', label: 'Shorts', icon: Flame },
-    { id: 'live', label: 'Live Streams', icon: Radio, badge: 'Twitch' },
-    { id: 'watch-party', label: 'Watch Together', icon: Tv2 },
+    { path: '/', label: 'Home', icon: Home },
+    { path: '/shorts', label: 'Shorts', icon: Flame },
+    { path: '/live', label: 'Live Streams', icon: Radio, badge: 'Twitch' },
+    { path: '/watch-party', label: 'Watch Together', icon: Tv2 },
   ];
 
+  const profilePath = profile ? `/profile/${profile.id}` : '/profile/me';
+
   const libraryNav = [
-    { id: 'my-list', label: 'My List', icon: Bookmark },
-    { id: 'feed', label: 'Community Feed', icon: Users, hideInKids: true },
-    { id: 'profile', label: 'Your Profile', icon: User },
-    { id: 'edit-profile', label: 'Settings', icon: Settings },
+    { path: '/my-list', label: 'My List', icon: Bookmark },
+    { path: '/feed', label: 'Community Feed', icon: Users, hideInKids: true },
+    { path: profilePath, label: 'Your Profile', icon: User },
+    { path: '/profile/edit', label: 'Settings', icon: Settings },
   ];
 
   const adminNav = [
-    { id: 'moderation', label: 'Moderation Queue', icon: ShieldCheck, roleRequired: 'admin' },
+    { path: '/moderation', label: 'Moderation Queue', icon: ShieldCheck, roleRequired: 'admin' },
   ];
+
+  const isPathActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
 
   return (
     <aside
@@ -50,11 +57,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isCol
       <div className="space-y-1 mb-6">
         {mainNav.map((item) => {
           const Icon = item.icon;
-          const isActive = currentView === item.id;
+          const isActive = isPathActive(item.path);
           return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
+            <Link
+              key={item.path}
+              to={item.path}
               className={`w-full flex items-center gap-4 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                 isActive
                   ? 'bg-cozia-surface-2 text-cozia-gold font-semibold border border-cozia-gold/20'
@@ -73,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isCol
                   )}
                 </div>
               )}
-            </button>
+            </Link>
           );
         })}
       </div>
@@ -88,11 +95,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isCol
         {libraryNav.map((item) => {
           if (item.hideInKids && isKidsMode) return null;
           const Icon = item.icon;
-          const isActive = currentView === item.id;
+          const isActive = isPathActive(item.path);
           return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
+            <Link
+              key={item.path}
+              to={item.path}
               className={`w-full flex items-center gap-4 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                 isActive
                   ? 'bg-cozia-surface-2 text-cozia-gold font-semibold border border-cozia-gold/20'
@@ -102,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isCol
             >
               <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-cozia-gold' : 'text-cozia-ink-dim'}`} />
               {!isCollapsed && <span className="truncate">{item.label}</span>}
-            </button>
+            </Link>
           );
         })}
       </div>
@@ -118,11 +125,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isCol
           <div className="space-y-1 mb-6">
             {adminNav.map((item) => {
               const Icon = item.icon;
-              const isActive = currentView === item.id;
+              const isActive = isPathActive(item.path);
               return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
+                <Link
+                  key={item.path}
+                  to={item.path}
                   className={`w-full flex items-center gap-4 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                     isActive
                       ? 'bg-cozia-gold/15 text-cozia-gold font-semibold border border-cozia-gold/30'
@@ -132,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isCol
                 >
                   <Icon className="w-5 h-5 shrink-0 text-cozia-gold" />
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
-                </button>
+                </Link>
               );
             })}
           </div>
