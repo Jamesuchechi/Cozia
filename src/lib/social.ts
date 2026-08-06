@@ -35,11 +35,19 @@ export interface ReactionItem {
   createdAt: string;
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isUuid(id: string): boolean {
+  return UUID_REGEX.test(id);
+}
+
 // ------------------------------------------------------------
 // 1. FOLLOWS
 // ------------------------------------------------------------
 
 export async function followUser(followerId: string, followingId: string): Promise<{ success: boolean; error?: string }> {
+  if (!isUuid(followerId) || !isUuid(followingId)) {
+    return { success: false, error: 'Invalid user ID format' };
+  }
   try {
     const { error } = await supabase.from('follows').insert({
       follower_id: followerId,
@@ -53,6 +61,9 @@ export async function followUser(followerId: string, followingId: string): Promi
 }
 
 export async function unfollowUser(followerId: string, followingId: string): Promise<{ success: boolean; error?: string }> {
+  if (!isUuid(followerId) || !isUuid(followingId)) {
+    return { success: false, error: 'Invalid user ID format' };
+  }
   try {
     const { error } = await supabase
       .from('follows')
@@ -67,6 +78,7 @@ export async function unfollowUser(followerId: string, followingId: string): Pro
 }
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
+  if (!isUuid(followerId) || !isUuid(followingId)) return false;
   try {
     const { data, error } = await supabase
       .from('follows')
@@ -83,10 +95,11 @@ export async function isFollowing(followerId: string, followingId: string): Prom
 }
 
 export async function getFollowers(userId: string): Promise<UserProfile[]> {
+  if (!isUuid(userId)) return [];
   try {
     const { data, error } = await supabase
       .from('follows')
-      .select('profiles!follows_follower_id_fkey(*)')
+      .select('profiles!follower_id(*)')
       .eq('following_id', userId);
 
     if (error || !data) return [];
@@ -104,10 +117,11 @@ export async function getFollowers(userId: string): Promise<UserProfile[]> {
 }
 
 export async function getFollowing(userId: string): Promise<UserProfile[]> {
+  if (!isUuid(userId)) return [];
   try {
     const { data, error } = await supabase
       .from('follows')
-      .select('profiles!follows_following_id_fkey(*)')
+      .select('profiles!following_id(*)')
       .eq('follower_id', userId);
 
     if (error || !data) return [];
