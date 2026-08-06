@@ -140,7 +140,7 @@ function AppContent() {
             <Route path="/watch-party" element={<WatchParty />} />
             <Route path="/watch-party/:roomId" element={<WatchParty />} />
             <Route path="/profile/me" element={<PublicProfile profile={profile} />} />
-            <Route path="/profile/:id" element={<PublicProfile profile={profile} />} />
+            <Route path="/profile/:id" element={<PublicProfile />} />
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/moderation" element={<ModerationQueue />} />
             <Route path="/terms" element={<Terms />} />

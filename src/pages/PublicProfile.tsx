@@ -1,23 +1,77 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { UserProfile } from '../types';
-import { Globe, Twitter, Youtube, Bookmark, Calendar, Settings, UserPlus, UserCheck } from 'lucide-react';
+import { Globe, Twitter, Youtube, Bookmark, Calendar, Settings, UserPlus, UserCheck, UserX } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { followUser, unfollowUser, isFollowing } from '../lib/social';
+import { supabase } from '../lib/supabase';
 
 interface PublicProfileProps {
   profile?: UserProfile | null;
   onNavigateEdit?: () => void;
 }
 
-export const PublicProfile: React.FC<PublicProfileProps> = ({ profile, onNavigateEdit }) => {
+export const PublicProfile: React.FC<PublicProfileProps> = ({ profile: propProfile, onNavigateEdit }) => {
   const navigate = useNavigate();
+  const { id: paramId } = useParams<{ id?: string }>();
   const { profile: currentUserProfile } = useAuth();
-  const isOwnProfile = currentUserProfile?.id === profile?.id || !profile;
-  const activeProfile = profile || currentUserProfile;
+
+  const [fetchedProfile, setFetchedProfile] = useState<UserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(false);
+  const [profileNotFound, setProfileNotFound] = useState<boolean>(false);
 
   const [following, setFollowing] = useState<boolean>(false);
   const [loadingFollow, setLoadingFollow] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (paramId && paramId !== 'me') {
+      loadProfileById(paramId);
+    } else {
+      setFetchedProfile(null);
+      setProfileNotFound(false);
+    }
+  }, [paramId]);
+
+  const loadProfileById = async (userId: string) => {
+    setLoadingProfile(true);
+    setProfileNotFound(false);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error || !data) {
+        setProfileNotFound(true);
+        setFetchedProfile(null);
+      } else {
+        setFetchedProfile({
+          id: data.id,
+          username: data.username,
+          displayName: data.display_name,
+          avatarUrl: data.avatar_url,
+          bannerUrl: data.banner_url,
+          bio: data.bio,
+          websiteUrl: data.website_url,
+          socialLinks: data.social_links || {},
+          isKidMode: data.is_kid_mode || false,
+          role: data.role || 'user',
+          createdAt: data.created_at,
+        });
+      }
+    } catch {
+      setProfileNotFound(true);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const activeProfile = paramId && paramId !== 'me' ? fetchedProfile : (propProfile || currentUserProfile);
+  const isOwnProfile =
+    currentUserProfile?.id && activeProfile?.id
+      ? currentUserProfile.id === activeProfile.id
+      : !paramId || paramId === 'me';
 
   useEffect(() => {
     if (currentUserProfile && activeProfile && !isOwnProfile) {
@@ -52,10 +106,31 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({ profile, onNavigat
     }
   };
 
-  if (!activeProfile) {
+  if (loadingProfile) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-cozia-ink-dim">
-        <p>No profile selected.</p>
+      <div className="flex flex-col items-center justify-center py-24 text-cozia-ink-dim space-y-3">
+        <div className="w-8 h-8 rounded-full border-2 border-cozia-gold border-t-transparent animate-spin" />
+        <p className="text-xs font-mono">Loading profile data...</p>
+      </div>
+    );
+  }
+
+  if (profileNotFound || !activeProfile) {
+    return (
+      <div className="max-w-md mx-auto my-16 p-8 rounded-3xl bg-cozia-surface border border-cozia-line text-center space-y-4 shadow-xl">
+        <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 mx-auto flex items-center justify-center">
+          <UserX className="w-6 h-6" />
+        </div>
+        <h2 className="font-serif text-xl font-medium">User Profile Not Found</h2>
+        <p className="text-xs text-cozia-ink-dim leading-relaxed">
+          No Cozia member profile matches ID "{paramId}". The profile may have been removed or the URL is incorrect.
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-5 py-2.5 rounded-xl bg-cozia-gold text-cozia-bg text-xs font-semibold hover:bg-cozia-gold-dim transition-all"
+        >
+          Return Home
+        </button>
       </div>
     );
   }
