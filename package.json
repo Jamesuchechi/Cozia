@@ -9,8 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx scripts/seed.ts",
-    "ingest": "tsx scripts/ingest.ts"
+    "seed": "npx tsx scripts/seed.ts",
+    "ingest": "npx tsx scripts/ingest.ts",
+    "test:rls": "npx tsx scripts/test-rls.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",
