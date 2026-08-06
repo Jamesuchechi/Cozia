@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CuratedVideo } from '../../types';
 import { VimeoPlayer } from './VimeoPlayer';
 import { DailymotionPlayer } from './DailymotionPlayer';
 import { TwitchPlayer } from './TwitchPlayer';
 import { VideoCard } from '../video/VideoCard';
-import { ThumbsUp, Heart, Star, Smile, Share2, ShieldCheck, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { ThumbsUp, Heart, Star, Smile, Share2, ShieldCheck, MessageSquare, CheckCircle2, Play, Pause, RotateCcw, RotateCw } from 'lucide-react';
+
+export interface PlaybackEvent {
+  type: 'play' | 'pause' | 'seek';
+  time: number;
+  timestamp?: number;
+}
 
 interface UniversalVideoPlayerProps {
   video: CuratedVideo;
@@ -12,6 +18,8 @@ interface UniversalVideoPlayerProps {
   onSelectVideo?: (video: CuratedVideo) => void;
   onToggleSave?: (video: CuratedVideo) => void;
   isSaved?: boolean;
+  onPlaybackChange?: (event: PlaybackEvent) => void;
+  remotePlaybackEvent?: PlaybackEvent | null;
 }
 
 export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
@@ -19,7 +27,13 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
   allVideos = [],
   onSelectVideo,
   onToggleSave,
+  onPlaybackChange,
+  remotePlaybackEvent,
 }) => {
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
   const [reactions, setReactions] = useState<{
     likes: number;
     hearts: number;
@@ -52,6 +66,61 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
     },
   ]);
 
+  // Apply remote playback event from WatchParty without re-triggering local broadcast (echo guard)
+  useEffect(() => {
+    if (!remotePlaybackEvent) return;
+    executePlaybackCommand(remotePlaybackEvent.type, remotePlaybackEvent.time);
+    if (remotePlaybackEvent.type === 'play') setIsPlaying(true);
+    if (remotePlaybackEvent.type === 'pause') setIsPlaying(false);
+    if (remotePlaybackEvent.type === 'seek') setCurrentTime(remotePlaybackEvent.time);
+  }, [remotePlaybackEvent?.timestamp, remotePlaybackEvent?.type, remotePlaybackEvent?.time]);
+
+  const executePlaybackCommand = (type: 'play' | 'pause' | 'seek', time: number) => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+
+    try {
+      if (video.provider === 'youtube') {
+        if (type === 'play') {
+          win.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
+        } else if (type === 'pause') {
+          win.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }), '*');
+        } else if (type === 'seek') {
+          win.postMessage(JSON.stringify({ event: 'command', func: 'seekTo', args: [time, true] }), '*');
+        }
+      } else if (video.provider === 'vimeo') {
+        if (type === 'play') {
+          win.postMessage(JSON.stringify({ method: 'play' }), '*');
+        } else if (type === 'pause') {
+          win.postMessage(JSON.stringify({ method: 'pause' }), '*');
+        } else if (type === 'seek') {
+          win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: time }), '*');
+        }
+      } else if (video.provider === 'dailymotion') {
+        if (type === 'play') win.postMessage('play', '*');
+        else if (type === 'pause') win.postMessage('pause', '*');
+        else if (type === 'seek') win.postMessage(`seek:${time}`, '*');
+      } else if (video.provider === 'twitch') {
+        if (type === 'play') win.postMessage(JSON.stringify({ method: 'play' }), '*');
+        else if (type === 'pause') win.postMessage(JSON.stringify({ method: 'pause' }), '*');
+        else if (type === 'seek') win.postMessage(JSON.stringify({ method: 'seek', args: [time] }), '*');
+      }
+    } catch (err) {
+      console.warn('Iframe postMessage command execution warning:', err);
+    }
+  };
+
+  const handleLocalPlayback = (type: 'play' | 'pause' | 'seek', targetTime?: number) => {
+    const newTime = targetTime !== undefined ? targetTime : currentTime;
+    executePlaybackCommand(type, newTime);
+
+    if (type === 'play') setIsPlaying(true);
+    if (type === 'pause') setIsPlaying(false);
+    if (type === 'seek') setCurrentTime(newTime);
+
+    onPlaybackChange?.({ type, time: newTime });
+  };
+
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) return;
@@ -79,7 +148,8 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
         return (
           <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-cozia-surface-2 shadow-2xl border border-cozia-line">
             <iframe
-              src={`https://www.youtube.com/embed/${video.providerVideoId}?autoplay=1&rel=0`}
+              ref={iframeRef}
+              src={`https://www.youtube.com/embed/${video.providerVideoId}?enablejsapi=1&autoplay=1&rel=0`}
               className="absolute inset-0 w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
@@ -89,13 +159,13 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
         );
 
       case 'vimeo':
-        return <VimeoPlayer videoId={video.providerVideoId} autoPlay={true} />;
+        return <VimeoPlayer ref={iframeRef} videoId={video.providerVideoId} autoPlay={true} />;
 
       case 'dailymotion':
-        return <DailymotionPlayer videoId={video.providerVideoId} autoPlay={true} />;
+        return <DailymotionPlayer ref={iframeRef} videoId={video.providerVideoId} autoPlay={true} />;
 
       case 'twitch':
-        return <TwitchPlayer videoIdOrChannel={video.providerVideoId} autoPlay={true} />;
+        return <TwitchPlayer ref={iframeRef} videoIdOrChannel={video.providerVideoId} autoPlay={true} />;
 
       default:
         return (
@@ -107,9 +177,55 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fade-in select-none">
+    <div className="space-y-4 animate-fade-in select-none">
       {/* 1. Main Video Player Engine */}
       {renderPlayerEngine()}
+
+      {/* Synchronized Multi-Player Playback Control Toolbar */}
+      <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-cozia-surface border border-cozia-line text-xs font-semibold">
+        <div className="flex items-center gap-2">
+          {isPlaying ? (
+            <button
+              onClick={() => handleLocalPlayback('pause')}
+              className="px-3.5 py-1.5 rounded-xl bg-cozia-gold text-cozia-bg hover:bg-cozia-gold-dim transition-all flex items-center gap-1.5 shadow"
+            >
+              <Pause className="w-4 h-4 fill-current" />
+              <span>Pause</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => handleLocalPlayback('play')}
+              className="px-3.5 py-1.5 rounded-xl bg-cozia-gold text-cozia-bg hover:bg-cozia-gold-dim transition-all flex items-center gap-1.5 shadow"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              <span>Play</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => handleLocalPlayback('seek', Math.max(0, currentTime - 10))}
+            className="px-3 py-1.5 rounded-xl bg-cozia-surface-2 border border-cozia-line text-cozia-ink hover:border-cozia-gold transition-all flex items-center gap-1"
+            title="Seek back 10s"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>-10s</span>
+          </button>
+
+          <button
+            onClick={() => handleLocalPlayback('seek', currentTime + 10)}
+            className="px-3 py-1.5 rounded-xl bg-cozia-surface-2 border border-cozia-line text-cozia-ink hover:border-cozia-gold transition-all flex items-center gap-1"
+            title="Seek forward 10s"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>+10s</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 font-mono text-[11px] text-cozia-teal">
+          <span className="w-2 h-2 rounded-full bg-cozia-teal animate-ping" />
+          <span>Synced Room Control ({video.provider.toUpperCase()})</span>
+        </div>
+      </div>
 
       {/* 2. Video Title & Custom Chrome Header */}
       <div className="space-y-4">

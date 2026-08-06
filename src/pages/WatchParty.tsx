@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { CuratedVideo } from '../types';
 import { getCuratedVideos } from '../lib/curation';
-import { UniversalVideoPlayer } from '../components/player/UniversalVideoPlayer';
+import { UniversalVideoPlayer, PlaybackEvent } from '../components/player/UniversalVideoPlayer';
 import { Tv2, Users, Send, Sparkles, Copy, Check } from 'lucide-react';
 
 interface ChatMessage {
@@ -36,6 +36,9 @@ export const WatchParty: React.FC = () => {
   const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
+  const [remotePlaybackEvent, setRemotePlaybackEvent] = useState<PlaybackEvent | null>(null);
+
+  const clientSessionId = useRef<string>(`session-${Math.random().toString(36).slice(2, 9)}`);
   const channelRef = useRef<any>(null);
 
   useEffect(() => {
@@ -70,6 +73,17 @@ export const WatchParty: React.FC = () => {
       .on('broadcast', { event: 'change_video' }, (payload) => {
         if (payload.payload.video) {
           setCurrentVideo(payload.payload.video);
+        }
+      })
+      .on('broadcast', { event: 'playback' }, (payload) => {
+        const data = payload.payload;
+        // Echo Guard: only process remote broadcast events sent by other session IDs
+        if (data && data.senderId !== clientSessionId.current) {
+          setRemotePlaybackEvent({
+            type: data.type,
+            time: data.time,
+            timestamp: data.timestamp || Date.now(),
+          });
         }
       })
       .subscribe((status) => {
@@ -134,6 +148,20 @@ export const WatchParty: React.FC = () => {
     }
   };
 
+  const handleLocalPlaybackChange = (event: PlaybackEvent) => {
+    if (!channelRef.current) return;
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'playback',
+      payload: {
+        type: event.type,
+        time: event.time,
+        senderId: clientSessionId.current,
+        timestamp: Date.now(),
+      },
+    });
+  };
+
   const handleCopyShareLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
@@ -192,7 +220,13 @@ export const WatchParty: React.FC = () => {
         {/* Synced Video Player Box (2 Columns) */}
         <div className="lg:col-span-2 space-y-4">
           {currentVideo ? (
-            <UniversalVideoPlayer video={currentVideo} allVideos={videos} onSelectVideo={handleSelectRoomVideo} />
+            <UniversalVideoPlayer
+              video={currentVideo}
+              allVideos={videos}
+              onSelectVideo={handleSelectRoomVideo}
+              onPlaybackChange={handleLocalPlaybackChange}
+              remotePlaybackEvent={remotePlaybackEvent}
+            />
           ) : (
             <div className="aspect-video w-full rounded-2xl bg-cozia-surface flex items-center justify-center text-xs font-mono text-cozia-ink-dim border border-cozia-line">
               Loading Watch Together Player...

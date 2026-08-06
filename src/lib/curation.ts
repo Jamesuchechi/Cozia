@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 import { CuratedVideo, ModerationItem, VideoProvider } from '../types';
 import { LOCAL_INGESTED_VIDEOS } from './ingestion';
 
+export const SEED_MODERATION_QUEUE: ModerationItem[] = [];
+
 /**
  * Shuffle an array in-place using Fisher-Yates algorithm for catalog randomization on refresh.
  */
