@@ -191,6 +191,10 @@ DROP POLICY IF EXISTS "Allow insertion into curated_videos" ON public.curated_vi
 CREATE POLICY "Allow insertion into curated_videos"
   ON public.curated_videos FOR INSERT WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow update on curated_videos" ON public.curated_videos;
+CREATE POLICY "Allow update on curated_videos"
+  ON public.curated_videos FOR UPDATE USING (true);
+
 -- 3. Shelves Policies
 DROP POLICY IF EXISTS "Shelves are viewable by everyone" ON public.shelves;
 CREATE POLICY "Shelves are viewable by everyone"

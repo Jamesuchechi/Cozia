@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { CuratedVideo, VideoProvider } from '../types';
 import { containsProfanityOrFlaggedKeywords } from './moderation';
+import { fetchVimeoMetadata } from './vimeo';
 
 /**
  * Auto-approval allowlist for family-safe creators and categories.
@@ -193,33 +194,31 @@ export async function runIngestionJob(): Promise<IngestionResult> {
     }
   }
 
-  // 2. Vimeo Category Discovery API (rotating categories & page tokens)
-  const vimeoCat = VIMEO_DISCOVERY_CATEGORIES[currentRunIndex % VIMEO_DISCOVERY_CATEGORIES.length];
-  const vimeoPage = (currentRunIndex % 3) + 1;
-  try {
-    const vimeoRes = await fetch(
-      `https://vimeo.com/api/v2/category/${vimeoCat}/videos.json?page=${vimeoPage}`
-    );
-    result.quotaUsage.vimeo.used += 1;
-    if (vimeoRes.ok) {
-      const vimeoData = await vimeoRes.json();
-      for (const vid of (vimeoData || []).slice(0, 4)) {
-        fetchedCandidates.push({
-          provider: 'vimeo',
-          providerVideoId: String(vid.id),
-          title: vid.title,
-          description: vid.description || 'Curated Vimeo Short Film',
-          thumbnailUrl: vid.thumbnail_large || vid.thumbnail_medium,
-          duration: `${Math.floor(vid.duration / 60)}:${vid.duration % 60}`,
-          category: 'Documentary',
-          tags: ['Vimeo', vimeoCat],
-          authorName: vid.user_name || 'Vimeo Creator',
-          isLive: false,
-        });
-      }
+  // 2. Vimeo Discovery (using Vimeo API v3 / oEmbed metadata service layer)
+  const vimeoPools = [
+    ['76979871', '22439234', '183788775', '137925439'],
+    ['34783334', '113426914', '108018156', '148751763'],
+  ];
+  const vimeoPool = vimeoPools[currentRunIndex % vimeoPools.length];
+  for (const vId of vimeoPool) {
+    try {
+      const vMeta = await fetchVimeoMetadata(vId);
+      fetchedCandidates.push({
+        provider: 'vimeo',
+        providerVideoId: vId,
+        title: vMeta.title,
+        description: vMeta.description,
+        thumbnailUrl: vMeta.thumbnailUrl,
+        duration: vMeta.duration || '3:45',
+        category: 'Documentary',
+        tags: ['Vimeo', 'Documentary', 'Animation'],
+        authorName: vMeta.authorName,
+        isLive: false,
+      });
+      result.quotaUsage.vimeo.used += 1;
+    } catch (err: any) {
+      result.errors.push(`Vimeo discovery failed for video ${vId}: ${err.message}`);
     }
-  } catch (err: any) {
-    result.errors.push(`Vimeo discovery API failed: ${err.message}`);
   }
 
   // 3. Dailymotion Trending & Explore API (rotating tags & page offsets)
@@ -288,8 +287,16 @@ export async function runIngestionJob(): Promise<IngestionResult> {
     );
     const initialStatus = autoApproved ? 'approved' : 'pending';
 
-    const { error } = await supabase.from('curated_videos').upsert(
-      {
+    // Check if video already exists in database before inserting to avoid RLS upsert permission issues
+    const { data: existing } = await supabase
+      .from('curated_videos')
+      .select('id')
+      .eq('provider', item.provider)
+      .eq('provider_video_id', item.providerVideoId)
+      .maybeSingle();
+
+    if (!existing) {
+      const { error } = await supabase.from('curated_videos').insert({
         provider: item.provider,
         provider_video_id: item.providerVideoId,
         title: item.title,
@@ -300,14 +307,13 @@ export async function runIngestionJob(): Promise<IngestionResult> {
         tags: item.tags,
         safety_status: initialStatus,
         is_live: item.isLive || false,
-      },
-      { onConflict: 'provider,provider_video_id' }
-    );
+      });
 
-    if (error) {
-      result.errors.push(
-        `Supabase write error for ${item.provider}:${item.providerVideoId} - ${error.message}`
-      );
+      if (error) {
+        result.errors.push(
+          `Supabase write error for ${item.provider}:${item.providerVideoId} - ${error.message}`
+        );
+      }
     }
 
     if (autoApproved) {

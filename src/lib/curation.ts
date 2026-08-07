@@ -95,22 +95,43 @@ export async function getCuratedVideos(
  */
 export async function curateVideo(video: CuratedVideo): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.from('curated_videos').upsert({
-      provider: video.provider,
-      provider_video_id: video.providerVideoId,
-      title: video.title,
-      description: video.description,
-      thumbnail_url: video.thumbnailUrl,
-      duration: video.duration,
-      category: video.category,
-      tags: video.tags,
-      safety_status: 'approved',
-      added_at: video.addedAt,
-      is_live: video.isLive || false,
-    });
+    const { data: existing } = await supabase
+      .from('curated_videos')
+      .select('id')
+      .eq('provider', video.provider)
+      .eq('provider_video_id', video.providerVideoId)
+      .maybeSingle();
 
-    if (error) {
-      return { success: false, error: error.message };
+    if (existing) {
+      const { error } = await supabase
+        .from('curated_videos')
+        .update({
+          title: video.title,
+          description: video.description,
+          thumbnail_url: video.thumbnailUrl,
+          duration: video.duration,
+          category: video.category,
+          tags: video.tags,
+          safety_status: 'approved',
+          is_live: video.isLive || false,
+        })
+        .eq('id', existing.id);
+      if (error) return { success: false, error: error.message };
+    } else {
+      const { error } = await supabase.from('curated_videos').insert({
+        provider: video.provider,
+        provider_video_id: video.providerVideoId,
+        title: video.title,
+        description: video.description,
+        thumbnail_url: video.thumbnailUrl,
+        duration: video.duration,
+        category: video.category,
+        tags: video.tags,
+        safety_status: 'approved',
+        added_at: video.addedAt,
+        is_live: video.isLive || false,
+      });
+      if (error) return { success: false, error: error.message };
     }
     return { success: true };
   } catch (err: any) {
