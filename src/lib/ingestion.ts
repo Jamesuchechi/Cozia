@@ -114,7 +114,10 @@ export async function runIngestionJob(): Promise<IngestionResult> {
       vimeo: { used: 0, limit: 1000, exhausted: false },
       dailymotion: { used: 0, limit: 1000, exhausted: false },
       twitch: { used: 0, limit: 1000, exhausted: false },
+      peertube: { used: 0, limit: 10000, exhausted: false },
+      internetarchive: { used: 0, limit: 10000, exhausted: false },
     },
+
     errors: [],
     providerVideoIds: [],
   };

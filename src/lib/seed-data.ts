@@ -213,3 +213,10 @@ export const SEED_CURATED_VIDEOS: CuratedVideo[] = [
     isLive: true,
   },
 ];
+
+
+import { toNormalizedVideo } from './video/normalizer';
+import { Video } from '../types/video';
+
+export const SEED_NORMALIZED_VIDEOS: Video[] = SEED_CURATED_VIDEOS.map((item) => toNormalizedVideo(item));
+

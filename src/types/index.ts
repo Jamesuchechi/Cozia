@@ -1,8 +1,10 @@
-export type VideoProvider = 'youtube' | 'vimeo' | 'dailymotion' | 'twitch';
+export * from './video';
 
+export type VideoProvider = 'youtube' | 'vimeo' | 'dailymotion' | 'twitch' | 'peertube' | 'internetarchive';
 export type SafetyStatus = 'pending' | 'approved' | 'rejected';
 
 export type UserRole = 'user' | 'curator' | 'admin';
+
 
 export interface SocialLinks {
   twitter?: string;

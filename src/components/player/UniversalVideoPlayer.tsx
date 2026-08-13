@@ -5,6 +5,10 @@ import { DailymotionPlayer } from './DailymotionPlayer';
 import { TwitchPlayer } from './TwitchPlayer';
 import { VideoCard } from '../video/VideoCard';
 import { ThumbsUp, Heart, Star, Smile, Share2, ShieldCheck, MessageSquare, CheckCircle2, Play, Pause, RotateCcw, RotateCw } from 'lucide-react';
+import { extractDominantHue, applyAmbientHue } from '../../lib/video/accent';
+import { useUserStore } from '../../stores/userStore';
+import { toNormalizedVideo } from '../../lib/video/normalizer';
+
 
 export interface PlaybackEvent {
   type: 'play' | 'pause' | 'seek';
@@ -33,6 +37,22 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const recordWatch = useUserStore((state) => state.recordWatch);
+
+  // Extract ambient hue on video change
+  useEffect(() => {
+    if (video?.thumbnailUrl) {
+      extractDominantHue(video.thumbnailUrl).then((hsl) => {
+        applyAmbientHue(hsl);
+      });
+    }
+
+    if (video) {
+      recordWatch(toNormalizedVideo(video));
+    }
+  }, [video?.id, video?.thumbnailUrl, recordWatch]);
+
 
   const [reactions, setReactions] = useState<{
     likes: number;

@@ -86,7 +86,7 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
 
 **Goal:** Establish a single, canonical `Video` Data Transfer Object (DTO), type system, caching layer, string normalization algorithms, and integration of open provider APIs (PeerTube & Internet Archive).
 
-- [ ] **1.1 Canonical DTO Definitions (`src/types/video.ts`)**
+- [x] **1.1 Canonical DTO Definitions (`src/types/video.ts`)**
   - Create `VideoSource` type (`'youtube' | 'vimeo' | 'twitch' | 'dailymotion' | 'peertube' | 'internetarchive'`).
   - Create `VideoFormat` type (`'horizontal' | 'vertical' | 'square'`).
   - Create `QualityOption` type (`'1080p' | '720p' | '480p' | '360p' | 'auto'`).
@@ -120,7 +120,7 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
     ```
   - Define `VideoChannel` and `VideoPlaylist` types.
 
-- [ ] **1.2 High-Performance Cache Infrastructure (`src/lib/video/cache.ts`)**
+- [x] **1.2 High-Performance Cache Infrastructure (`src/lib/video/cache.ts`)**
   - Implement a generic `TTLCache` utility supporting `get`, `set`, `has`, `clear`, and `wrap(key, ttlMs, fetcherFn)`.
   - Set TTL constants:
     - Search Queries: 15 minutes (`TTL.SEARCH`)
@@ -128,18 +128,19 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
     - Stream Proxy URLs: 4 hours (`TTL.STREAM_URL`)
     - Metadata / Details: 24 hours (`TTL.METADATA`)
 
-- [ ] **1.3 Normalization & Deduplication Utility (`src/lib/video/normalizer.ts`)**
+- [x] **1.3 Normalization & Deduplication Utility (`src/lib/video/normalizer.ts`)**
   - Build `normalizeString(input: string)` stripping brackets (e.g. "[OFFICIAL VIDEO]", "(4K 60FPS)"), special symbols, spaces, and casing.
   - Construct deduplication key generator: `getDedupeKey(title, creator)`.
   - Build priority resolution matrix: YouTube (Priority 1) ➔ Vimeo (Priority 2) ➔ Twitch (Priority 3) ➔ Dailymotion (Priority 4) ➔ PeerTube (Priority 5) ➔ Internet Archive (Priority 6).
 
-- [ ] **1.4 PeerTube Client SDK (`src/lib/video/peertube.ts`)**
+- [x] **1.4 PeerTube Client SDK (`src/lib/video/peertube.ts`)**
   - Implement federated PeerTube search across public instances (`framatube.org`, `peertube.stream`).
   - Normalize PeerTube JSON response into standard `Video` DTO (extracting direct HLS `.m3u8` and WebTorrent URLs).
 
-- [ ] **1.5 Internet Archive Video SDK (`src/lib/video/internetarchive.ts`)**
+- [x] **1.5 Internet Archive Video SDK (`src/lib/video/internetarchive.ts`)**
   - Implement IA Advanced Search API wrapper filtering for `mediatype:movies`.
   - Parse direct `.mp4` download links from IA item metadata into `directStreamUrl`.
+
 
 ---
 
@@ -147,20 +148,21 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
 
 **Goal:** Build a parallel multi-provider search and discovery engine that queries enabled video providers concurrently, normalizes the results, deduplicates candidates, and handles provider failures gracefully.
 
-- [ ] **2.1 Multi-Source Search & Aggregator Engine (`src/lib/video/aggregator.ts`)**
+- [x] **2.1 Multi-Source Search & Aggregator Engine (`src/lib/video/aggregator.ts`)**
   - Implement `searchAllSources(query: string, options: SearchOptions): Promise<Video[]>`:
     - Launch concurrent calls using `Promise.allSettled()` across `searchYouTube()`, `searchVimeo()`, `searchTwitch()`, `searchDailymotion()`, `searchPeerTube()`, `searchInternetArchive()`.
     - Apply fallback boundaries (`.catch(() => [])`) so single-provider timeouts never crash the query.
     - Flatten results and process through `deduplicateAndSort()`.
   - Wrap search results in `TTLCache`.
 
-- [ ] **2.2 Quota-Aware Ingestion Pipeline (`src/lib/video/ingestionEngine.ts`)**
+- [x] **2.2 Quota-Aware Ingestion Pipeline (`src/lib/video/ingestionEngine.ts`)**
   - Build a rate-limiter and quota tracker for YouTube Data API v3 and Vimeo API.
   - Implement automatic provider backoff: if YouTube API quota returns `429` / `quotaExceeded`, automatically switch primary provider to Invidious / Vimeo / PeerTube for the remainder of the session.
 
-- [ ] **2.3 Catalog Migration & Seed Compatibility**
+- [x] **2.3 Catalog Migration & Seed Compatibility**
   - Update `src/lib/seed-data.ts` to map legacy `CuratedVideo` entries to the new normalized `Video` DTO format.
   - Create adapter utility `toNormalizedVideo(curated: CuratedVideo): Video`.
+
 
 ---
 
