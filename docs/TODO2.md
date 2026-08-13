@@ -159,9 +159,10 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
   - Build a rate-limiter and quota tracker for YouTube Data API v3 and Vimeo API.
   - Implement automatic provider backoff: if YouTube API quota returns `429` / `quotaExceeded`, automatically switch primary provider to Invidious / Vimeo / PeerTube for the remainder of the session.
 
-- [x] **2.3 Catalog Migration & Seed Compatibility**
-  - Update `src/lib/seed-data.ts` to map legacy `CuratedVideo` entries to the new normalized `Video` DTO format.
-  - Create adapter utility `toNormalizedVideo(curated: CuratedVideo): Video`.
+- [x] **2.3 Direct API Discovery & Seed Elimination**
+  - Deprecated static hardcoded seed movies in `src/lib/seed-data.ts`.
+  - Configured `getCuratedVideos` and `getCuratedVideoShelves` to execute direct live calls to provider APIs (`searchAllSources` across YouTube/Invidious, PeerTube, Internet Archive, Dailymotion, Vimeo, Twitch).
+  - Provided `videoToCurated` adapter utility converting canonical `Video` DTOs to legacy layout components.
 
 
 ---
@@ -233,6 +234,10 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
     - If direct stream URL is present and working ➔ Render `NativeVideoEngine` (Engine A).
     - If direct stream fails or unavailable ➔ Fall back automatically to `IFrameVideoEngine` (Engine B).
   - Add seamless error boundary: if Engine A encounters a network error (`MEDIA_ERR_SRC_NOT_SUPPORTED`), trigger fallback to Engine B without stopping playback.
+
+- [x] **5.4 Full YouTube-Style Dedicated Watch Page Route (`src/pages/WatchPage.tsx`)**
+  - Replaced popup modal player (`PlayerModal.tsx`) with a dedicated `/watch?v=:id` route.
+  - Implemented 2-column YouTube watch layout (large 16:9 hero player, channel subscribe bar, action pills, expandable description box, comments section, and "Up Next" related videos sidebar).
 
 
 ---

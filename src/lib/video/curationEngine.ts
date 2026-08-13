@@ -1,6 +1,7 @@
 import { Video } from '../../types/video';
 import { getCuratedVideos } from '../curation';
 import { toNormalizedVideo } from './normalizer';
+import { searchAllSources } from './aggregator';
 import { getRegionalTopCharts } from './curation/charts';
 import { getEditorialTopicCollections, EditorialTopicCollections } from './curation/editorial';
 import { getFormatMixes } from './curation/formats';
@@ -24,7 +25,15 @@ export interface CurationShelvesResult {
  */
 export async function getCuratedVideoShelves(regionCode = 'US'): Promise<CurationShelvesResult> {
   const legacyCurated = await getCuratedVideos('all', 'All');
-  const normalizedPool: Video[] = legacyCurated.map((item) => toNormalizedVideo(item));
+  let normalizedPool: Video[] = legacyCurated.map((item) => toNormalizedVideo(item));
+
+  if (normalizedPool.length < 8) {
+    const liveResults = await searchAllSources({
+      query: 'trending nature science tech animation documentary shorts',
+      limit: 30,
+    });
+    normalizedPool = [...normalizedPool, ...liveResults];
+  }
 
   // Tier 1: Top Charts
   const trendingCharts = getRegionalTopCharts(normalizedPool, regionCode);

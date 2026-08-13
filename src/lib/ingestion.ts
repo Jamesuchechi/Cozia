@@ -172,28 +172,32 @@ export async function runIngestionJob(): Promise<IngestionResult> {
     }
   }
 
-  // Fallback YouTube dynamic oEmbed discovery if API key unavailable
+  // Keyless YouTube discovery via Invidious API if official API key is unavailable
   if (fetchedCandidates.filter((c) => c.provider === 'youtube').length === 0) {
-    const ytFallbackPools = [
-      ['dQw4w9WgXcQ', 'lFm4y5kU6N0', 'L_LUpnjgPso', 'hFZFjoX2cGg', 'jfKfPfyJRdk'],
-      ['7Pq-S557XQU', '9bZkp7q19f0', '8jPQjjsBbIc', '6v2L2UGZJAM', 'K4TOrB7at0Y'],
-      ['bHQqvYy5KYo', 'M7lc1UVf-VE', 'fJ9rUzIMcZQ', '3JZ_D3ELwOQ', '2Vv-BfVoq4g'],
-    ];
-    const pool = ytFallbackPools[currentRunIndex % ytFallbackPools.length];
-    for (const vidId of pool) {
-      fetchedCandidates.push({
-        provider: 'youtube',
-        providerVideoId: vidId,
-        title: `YouTube Educational Video (${vidId})`,
-        description: 'Dynamic family-friendly curated video.',
-        thumbnailUrl: `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg`,
-        duration: '5:00',
-        category: 'Educational',
-        tags: ['YouTube', 'Educational'],
-        authorName: 'TED-Ed',
-        isLive: false,
-      });
-      result.quotaUsage.youtube.used += 1;
+    try {
+      const invidiousRes = await fetch(`https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(ytSearchTerm)}&type=video`);
+      if (invidiousRes.ok) {
+        const invData = await invidiousRes.json();
+        if (Array.isArray(invData)) {
+          for (const item of invData.slice(0, 6)) {
+            fetchedCandidates.push({
+              provider: 'youtube',
+              providerVideoId: item.videoId,
+              title: item.title || `YouTube Video (${item.videoId})`,
+              description: item.description || 'Live YouTube video',
+              thumbnailUrl: item.videoThumbnails?.[0]?.url || `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+              duration: `${Math.floor((item.lengthSeconds || 240) / 60)}:${(item.lengthSeconds || 240) % 60}`,
+              category: 'Educational',
+              tags: ['YouTube', 'Educational', ytSearchTerm],
+              authorName: item.author || 'YouTube Creator',
+              isLive: false,
+            });
+            result.quotaUsage.youtube.used += 1;
+          }
+        }
+      }
+    } catch (err: any) {
+      result.errors.push(`Invidious keyless YouTube discovery failed: ${err.message}`);
     }
   }
 

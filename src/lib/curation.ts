@@ -1,7 +1,6 @@
 import { supabase } from './supabase';
 import { CuratedVideo, ModerationItem, VideoProvider } from '../types';
 import { LOCAL_INGESTED_VIDEOS, runIngestionJob } from './ingestion';
-import { SEED_CURATED_VIDEOS } from './seed-data';
 
 export const SEED_MODERATION_QUEUE: ModerationItem[] = [];
 
@@ -17,9 +16,35 @@ function shuffleArray<T>(array: T[]): T[] {
   return arr;
 }
 
+import { searchAllSources } from './video/aggregator';
+import { Video } from '../types/video';
+
 /**
- * Fetch curated videos from Supabase, applying randomized slice selection on refresh.
- * Falls back to dynamic catalog discovery and seed fixtures if database table is unpopulated.
+ * Convert canonical Video DTO to legacy CuratedVideo format
+ */
+export function videoToCurated(v: Video): CuratedVideo {
+  const mins = Math.floor(v.durationMs / 60000);
+  const secs = Math.floor((v.durationMs % 60000) / 1000);
+  const durStr = v.isLive ? 'LIVE' : mins > 0 ? `${mins}:${secs < 10 ? '0' : ''}${secs}` : `${secs}s`;
+
+  return {
+    id: v.id,
+    provider: v.source as VideoProvider,
+    providerVideoId: v.providerVideoId,
+    title: v.title,
+    description: v.description,
+    thumbnailUrl: v.thumbnailUrl,
+    duration: durStr,
+    category: v.category,
+    tags: v.tags || [],
+    safetyStatus: v.safetyStatus || 'approved',
+    addedAt: v.addedAt || new Date().toISOString(),
+    isLive: v.isLive,
+  };
+}
+
+/**
+ * Fetch curated videos from Supabase or direct multi-provider API calls.
  */
 export async function getCuratedVideos(
   providerFilter?: VideoProvider | 'all',
@@ -56,10 +81,17 @@ export async function getCuratedVideos(
         isLive: item.is_live,
       }));
     } else {
-      // If table is empty or unpopulated, default to initial curated seed catalog
-      videos = [...SEED_CURATED_VIDEOS];
+      // Direct live API calls across video providers (PeerTube, Internet Archive, YouTube/Invidious, Dailymotion, Vimeo, Twitch)
+      const searchQuery = categoryFilter && categoryFilter !== 'All' ? categoryFilter : 'nature science technology documentary animation music';
+      const liveResults = await searchAllSources({
+        query: searchQuery,
+        sources: providerFilter && providerFilter !== 'all' ? [providerFilter as any] : undefined,
+        limit: 24,
+      });
 
-      // Trigger multi-provider live discovery in background to fetch fresh content
+      videos = liveResults.map(videoToCurated);
+
+      // Trigger background ingestion if needed
       runIngestionJob().catch((err: any) => console.warn('Background ingestion warning:', err));
     }
 
@@ -81,11 +113,16 @@ export async function getCuratedVideos(
       return true;
     });
 
-    // Return randomized slice so feed changes on refresh
     return shuffleArray(filtered);
   } catch (err: any) {
-    console.warn('Failed to fetch curated videos, using catalog fallback:', err);
-    return shuffleArray([...SEED_CURATED_VIDEOS, ...LOCAL_INGESTED_VIDEOS]);
+    console.warn('Failed to fetch curated videos via primary path, attempting direct live provider search:', err);
+    try {
+      const fallbackQuery = categoryFilter && categoryFilter !== 'All' ? categoryFilter : 'trending videos';
+      const liveResults = await searchAllSources({ query: fallbackQuery, limit: 20 });
+      return shuffleArray(liveResults.map(videoToCurated));
+    } catch {
+      return [];
+    }
   }
 }
 

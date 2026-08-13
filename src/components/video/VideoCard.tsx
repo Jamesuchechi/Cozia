@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CuratedVideo } from '../../types';
 import { Bookmark, Check, ShieldCheck, Radio, CheckCircle2, MoreVertical } from 'lucide-react';
 
@@ -15,6 +16,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   onToggleSave,
   isSaved = false,
 }) => {
+  const navigate = useNavigate();
   const [saved, setSaved] = useState<boolean>(isSaved);
 
   const getProviderBadge = () => {
@@ -40,9 +42,17 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     }
   };
 
+  const handleCardClick = () => {
+    if (onSelectVideo) {
+      onSelectVideo(video);
+    } else {
+      navigate(`/watch?v=${encodeURIComponent(video.id)}`);
+    }
+  };
+
   return (
     <div
-      onClick={() => onSelectVideo && onSelectVideo(video)}
+      onClick={handleCardClick}
       className="group relative cursor-pointer flex flex-col justify-between select-none"
     >
       {/* Thumbnail Container (16:9 YouTube aspect ratio with clean rounded corners) */}

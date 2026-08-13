@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
@@ -7,7 +7,6 @@ import { BottomNav } from './components/layout/BottomNav';
 import { AuthModal } from './components/auth/AuthModal';
 import { ParentalPinModal } from './components/auth/ParentalPinModal';
 import { NominateModal } from './components/curation/NominateModal';
-import { PlayerModal } from './components/player/PlayerModal';
 import { Home } from './pages/Home';
 import { Shorts } from './pages/Shorts';
 import { Live } from './pages/Live';
@@ -17,6 +16,7 @@ import { EditProfile } from './pages/EditProfile';
 import { ModerationQueue } from './pages/ModerationQueue';
 import { Feed } from './pages/Feed';
 import { WatchParty } from './pages/WatchParty';
+import { WatchPage } from './pages/WatchPage';
 import { Terms } from './pages/Terms';
 import { Privacy } from './pages/Privacy';
 import { NotFound } from './pages/NotFound';
@@ -25,13 +25,13 @@ import { getCuratedVideos } from './lib/curation';
 
 function AppContent() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [activeProvider, setActiveProvider] = useState<VideoProvider | 'all'>('all');
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
   const [videos, setVideos] = useState<CuratedVideo[]>([]);
   const [loadingVideos, setLoadingVideos] = useState<boolean>(true);
   const [savedVideoIds, setSavedVideoIds] = useState<string[]>([]);
-  const [selectedVideo, setSelectedVideo] = useState<CuratedVideo | null>(null);
 
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [isNominateOpen, setIsNominateOpen] = useState<boolean>(false);
@@ -51,6 +51,10 @@ function AppContent() {
     const data = await getCuratedVideos(activeProvider, catFilter);
     setVideos(data);
     setLoadingVideos(false);
+  };
+
+  const handleSelectVideo = (video: CuratedVideo) => {
+    navigate(`/watch?v=${encodeURIComponent(video.id)}`);
   };
 
   const handleToggleSave = (video: CuratedVideo) => {
@@ -97,9 +101,29 @@ function AppContent() {
                   activeProvider={activeProvider}
                   activeCategory={activeCategory}
                   savedVideoIds={savedVideoIds}
-                  onSelectVideo={(v) => setSelectedVideo(v)}
+                  onSelectVideo={handleSelectVideo}
                   onToggleSave={handleToggleSave}
                   onOpenPinModal={handleOpenPinModal}
+                />
+              }
+            />
+            <Route
+              path="/watch"
+              element={
+                <WatchPage
+                  videos={videos}
+                  savedVideoIds={savedVideoIds}
+                  onToggleSave={handleToggleSave}
+                />
+              }
+            />
+            <Route
+              path="/watch/:id"
+              element={
+                <WatchPage
+                  videos={videos}
+                  savedVideoIds={savedVideoIds}
+                  onToggleSave={handleToggleSave}
                 />
               }
             />
@@ -109,7 +133,7 @@ function AppContent() {
                 <Shorts
                   videos={videos}
                   savedVideoIds={savedVideoIds}
-                  onSelectVideo={(v) => setSelectedVideo(v)}
+                  onSelectVideo={handleSelectVideo}
                   onToggleSave={handleToggleSave}
                 />
               }
@@ -120,7 +144,7 @@ function AppContent() {
                 <Live
                   videos={videos}
                   savedVideoIds={savedVideoIds}
-                  onSelectVideo={(v) => setSelectedVideo(v)}
+                  onSelectVideo={handleSelectVideo}
                   onToggleSave={handleToggleSave}
                 />
               }
@@ -131,7 +155,7 @@ function AppContent() {
                 <MyList
                   videos={videos}
                   savedVideoIds={savedVideoIds}
-                  onSelectVideo={(v) => setSelectedVideo(v)}
+                  onSelectVideo={handleSelectVideo}
                   onToggleSave={handleToggleSave}
                 />
               }
@@ -160,13 +184,6 @@ function AppContent() {
         isOpen={pinModalState.isOpen}
         onClose={() => setPinModalState({ ...pinModalState, isOpen: false })}
         mode={pinModalState.mode}
-      />
-      <PlayerModal
-        video={selectedVideo}
-        allVideos={videos}
-        onClose={() => setSelectedVideo(null)}
-        onSelectVideo={(v) => setSelectedVideo(v)}
-        onToggleSave={handleToggleSave}
       />
     </div>
   );
