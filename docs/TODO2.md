@@ -170,15 +170,16 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
 
 **Goal:** Build a resilient Vercel serverless function (`/api/video-stream-proxy`) that extracts direct streaming links (MP4 / HLS `.m3u8`) for YouTube and other restricted providers using a 4-tier waterfall fallback strategy.
 
-- [ ] **3.1 Serverless Resolution Waterfall Endpoint (`api/video-stream-proxy.ts`)**
+- [x] **3.1 Serverless Resolution Waterfall Endpoint (`api/video-stream-proxy.ts`)**
   - Implement Vercel Serverless Function accepting `videoId`, `provider`, and `quality`.
   - Tier 1: Query Cobalt API cluster instances (`https://api.cobalt.tools`). Return direct stream URL if successful.
   - Tier 2: Query Invidious API instances (`/api/v1/videos/:id`). Extract `adaptiveFormats` or direct `hlsUrl`.
   - Tier 3: Query Piped API instances (`/streams/:id`). Extract video/audio merged streams or HLS playlists.
   - Tier 4: Fall back to standard IFrame embed link (`https://www.youtube.com/embed/:id?autoplay=1`).
 
-- [ ] **3.2 Range Request & CORS Proxy Handler (`api/stream-cors-proxy.ts`)**
+- [x] **3.2 Range Request & CORS Proxy Handler (`api/stream-cors-proxy.ts`)**
   - Build a lightweight streaming proxy to relay range requests (`HTTP 206 Partial Content`) for native HTML5 video player seeking when third-party CDN headers restrict CORS.
+
 
 ---
 
@@ -186,7 +187,7 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
 
 **Goal:** Centralize all player controls, queue management, quality options, aspect ratio detection, and Watch Party sync into a unified Zustand store.
 
-- [ ] **4.1 Core Zustand Player Store (`src/stores/videoPlayerStore.ts`)**
+- [x] **4.1 Core Zustand Player Store (`src/stores/videoPlayerStore.ts`)**
   - Define state interface:
     - `currentVideo: Video | null`
     - `isPlaying: boolean`
@@ -207,9 +208,10 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
   - Define actions: `playVideo(video, queue?)`, `togglePlay()`, `seekTo(time)`, `setVolume(vol)`, `setQuality(q)`, `nextVideo()`, `previousVideo()`, `reorderQueue(fromIndex, toIndex)`, `addToQueue(video)`, `toggleWatchParty(roomId)`.
   - Integrate `zustand/middleware` `persist` for volume, preferred quality, and playback speed.
 
-- [ ] **4.2 User Affinity & Watch History Store (`src/stores/userStore.ts`)**
+- [x] **4.2 User Affinity & Watch History Store (`src/stores/userStore.ts`)**
   - Store watch history (`watchedVideoIds`, `lastPositionMap`), saved videos, liked channels, and category preferences.
   - Automatically sync watch history to Supabase Postgres `user_watch_history` table for logged-in users.
+
 
 ---
 
@@ -217,20 +219,21 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
 
 **Goal:** Refactor Cozia's video player to support seamless dual rendering: Native HTML5 Video Element (Engine A) for direct stream URLs / HLS streams and Provider IFrame SDKs (Engine B) for embedded fallbacks.
 
-- [ ] **5.1 Engine A: Native HTML5 Video & HLS.js Player (`src/components/player/NativeVideoEngine.tsx`)**
+- [x] **5.1 Engine A: Native HTML5 Video & HLS.js Player (`src/components/player/NativeVideoEngine.tsx`)**
   - Implement native `<video>` wrapper supporting direct `.mp4`, `.webm`, and `.m3u8` HLS streams via `hls.js`.
   - Handle picture-in-picture (`document.pictureInPictureElement`), full screen API, and smooth seeking.
   - Add buffer progress indicators and custom HTML5 UI controls.
 
-- [ ] **5.2 Engine B: Unified IFrame Player SDK Wrapper (`src/components/player/IFrameVideoEngine.tsx`)**
+- [x] **5.2 Engine B: Unified IFrame Player SDK Wrapper (`src/components/player/IFrameVideoEngine.tsx`)**
   - Combine YouTube IFrame API, Vimeo Player SDK, Twitch Player API, and Dailymotion SDK into a unified postMessage event wrapper.
   - Map provider-specific player events (`onStateChange`, `onTimeUpdate`, `onEnded`) to `videoPlayerStore` actions.
 
-- [ ] **5.3 Master Dual-Engine Switcher (`src/components/player/UniversalVideoPlayer.tsx`)**
+- [x] **5.3 Master Dual-Engine Switcher (`src/components/player/UniversalVideoPlayer.tsx`)**
   - Check `currentVideo.directStreamUrl`:
     - If direct stream URL is present and working ➔ Render `NativeVideoEngine` (Engine A).
     - If direct stream fails or unavailable ➔ Fall back automatically to `IFrameVideoEngine` (Engine B).
   - Add seamless error boundary: if Engine A encounters a network error (`MEDIA_ERR_SRC_NOT_SUPPORTED`), trigger fallback to Engine B without stopping playback.
+
 
 ---
 
@@ -238,7 +241,7 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
 
 **Goal:** Extract the dominant accent color from video thumbnails in real time, injecting dynamic CSS variables (`OKLCH`/`HSL`) for smooth background ambient lighting around the player and UI.
 
-- [ ] **6.1 Canvas Color Extractor (`src/lib/video/accent.ts`)**
+- [x] **6.1 Canvas Color Extractor (`src/lib/video/accent.ts`)**
   - Build `extractDominantColor(imageUrl: string): Promise<{ hue: number; saturation: number; lightness: number } | null>`:
     - Load thumbnail onto offscreen HTML5 `<canvas>` (50x50px).
     - Calculate average RGB vector.
@@ -246,7 +249,7 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
     - Ignore pure black, pure white, and low-contrast grayscale colors to extract vivid accent hues.
   - Implement `applyAmbientGlow(hue: number)` setting `:root` CSS variables `--accent-hue`, `--ambient-glow`, and `--ambient-bg`.
 
-- [ ] **6.2 Dynamic CSS Ambient Lighting Styles (`src/index.css`)**
+- [x] **6.2 Dynamic CSS Ambient Lighting Styles (`src/index.css`)**
   - Add ambient glow backdrop container behind player viewport:
     ```css
     .ambient-glow-container {
@@ -262,34 +265,36 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
     ```
   - Apply hover glow borders to video cards and shelf row headers.
 
+
 ---
 
 ### Phase 7: 4-Tier Video Curation & Recommendation Engine
 
 **Goal:** Build a robust 4-tier video discovery engine that powers Cozia's browse shelves while strictly enforcing Supabase `safety_status === 'approved'` family safety policies.
 
-- [ ] **7.1 Tier 1: Regional & Country Top Charts (`src/lib/video/curation/charts.ts`)**
+- [x] **7.1 Tier 1: Regional & Country Top Charts (`src/lib/video/curation/charts.ts`)**
   - Connect to YouTube `videos?chart=mostPopular&regionCode={regionCode}`, Dailymotion `/trending`, and Vimeo Staff Picks.
   - Merge and rank trending items by view velocity. Filter against Supabase safety status.
 
-- [ ] **7.2 Tier 2: Editorial & Topic Collections (`src/lib/video/curation/editorial.ts`)**
+- [x] **7.2 Tier 2: Editorial & Topic Collections (`src/lib/video/curation/editorial.ts`)**
   - Build curated topic feeds:
     - *Tech & Coding Deep Dives* (System architecture, React, AI demos)
     - *Indie Cinema & Short Films* (Vimeo Staff Picks, festival trailers)
     - *Gaming & Esports Highlights* (Twitch top clips, speedruns)
     - *Kids & Family Adventures* (Science experiments, animations, nature documentaries)
 
-- [ ] **7.3 Tier 3: Format, Aspect Ratio & Duration Mixes (`src/lib/video/curation/formats.ts`)**
+- [x] **7.3 Tier 3: Format, Aspect Ratio & Duration Mixes (`src/lib/video/curation/formats.ts`)**
   - **Shorts & Clips Mix**: Filter for `aspectRatio === '9:16'` or `durationMs < 240000` (4 minutes). Render in vertical mobile-first TikTok/Reels carousel.
   - **Longform & Documentaries**: Filter for `durationMs > 1200000` (20 minutes). Render in widescreen Netflix-style hero banner.
   - **Ambient & Study Streams**: Filter for lo-fi, nature streams, background audio visuals.
 
-- [ ] **7.4 Tier 4: Algorithmic "For You" Personalization (`src/lib/video/personalization.ts`)**
+- [x] **7.4 Tier 4: Algorithmic "For You" Personalization (`src/lib/video/personalization.ts`)**
   - Calculate user taste profile vector from:
     - Category frequency in watch history (weight = 0.4)
     - Liked creators / channels (weight = 0.3)
     - Saved videos (weight = 0.3)
   - Rank unvisited approved candidate videos against taste vector to generate personalized "Recommended for You" home shelf.
+
 
 ---
 
@@ -297,20 +302,21 @@ Inspired by **Ikoro's music architecture**, Cozia will aggregate video metadata 
 
 **Goal:** Wire Supabase Realtime Broadcast channels into `videoPlayerStore` to create frame-accurate, synchronized multi-platform Watch Party rooms.
 
-- [ ] **8.1 Realtime Watch Party Engine (`src/lib/video/watchParty.ts`)**
+- [x] **8.1 Realtime Watch Party Engine (`src/lib/video/watchParty.ts`)**
   - Create Supabase Realtime Broadcast channel per `roomId` (`cozia:watch-party:${roomId}`).
   - Relay playback events: `SEEK`, `PLAY`, `PAUSE`, `VIDEO_CHANGE`, `BUFFERING`.
   - Calculate clock offset using NTP-style ping (`serverTimeOffset = Date.now() - payload.timestamp`).
   - Enforce frame-accurate seek alignment (`Math.abs(localTime - targetTime) > 1.5s` ➔ auto-seek).
 
-- [ ] **8.2 Watch Party UI Component Overhaul (`src/pages/WatchParty.tsx`)**
+- [x] **8.2 Watch Party UI Component Overhaul (`src/pages/WatchParty.tsx`)**
   - Render `UniversalVideoPlayer` in synchronized guest mode.
   - Add interactive floating emoji reaction overlay (flying hearts, fire, party poppers across player).
   - Synchronized real-time chat with profanity auto-filter.
   - Shareable invitation link (`/watch-party/:roomId`) with copy button and QR code.
 
-- [ ] **8.3 Social Discovery Shelves**
+- [x] **8.3 Social Discovery Shelves**
   - Build "Friends Are Watching Right Now" shelf displaying active watch party rooms and recent friend activity from Supabase `follows` and `posts` tables.
+
 
 ---
 

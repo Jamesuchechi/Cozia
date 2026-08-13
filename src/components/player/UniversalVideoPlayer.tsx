@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CuratedVideo } from '../../types';
-import { VimeoPlayer } from './VimeoPlayer';
-import { DailymotionPlayer } from './DailymotionPlayer';
-import { TwitchPlayer } from './TwitchPlayer';
 import { VideoCard } from '../video/VideoCard';
+
 import { ThumbsUp, Heart, Star, Smile, Share2, ShieldCheck, MessageSquare, CheckCircle2, Play, Pause, RotateCcw, RotateCw } from 'lucide-react';
 import { extractDominantHue, applyAmbientHue } from '../../lib/video/accent';
 import { useUserStore } from '../../stores/userStore';
 import { toNormalizedVideo } from '../../lib/video/normalizer';
 
+
+import { NativeVideoEngine } from './NativeVideoEngine';
+import { IFrameVideoEngine } from './IFrameVideoEngine';
 
 export interface PlaybackEvent {
   type: 'play' | 'pause' | 'seek';
@@ -36,12 +37,15 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [currentTime, setCurrentTime] = useState<number>(0);
+  const [engineAFailed, setEngineAFailed] = useState<boolean>(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const recordWatch = useUserStore((state) => state.recordWatch);
+  const normVideo = toNormalizedVideo(video);
 
   // Extract ambient hue on video change
   useEffect(() => {
+    setEngineAFailed(false);
     if (video?.thumbnailUrl) {
       extractDominantHue(video.thumbnailUrl).then((hsl) => {
         applyAmbientHue(hsl);
@@ -49,9 +53,23 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
     }
 
     if (video) {
-      recordWatch(toNormalizedVideo(video));
+      recordWatch(normVideo);
     }
   }, [video?.id, video?.thumbnailUrl, recordWatch]);
+
+  const renderPlayerEngine = () => {
+    if (normVideo.directStreamUrl && !engineAFailed) {
+      return (
+        <NativeVideoEngine
+          src={normVideo.directStreamUrl}
+          poster={normVideo.thumbnailUrl}
+          onErrorFallback={() => setEngineAFailed(true)}
+        />
+      );
+    }
+    return <IFrameVideoEngine video={normVideo} />;
+  };
+
 
 
   const [reactions, setReactions] = useState<{
@@ -162,44 +180,18 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
     .filter((v) => v.id !== video.id)
     .slice(0, 4);
 
-  const renderPlayerEngine = () => {
-    switch (video.provider) {
-      case 'youtube':
-        return (
-          <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-cozia-surface-2 shadow-2xl border border-cozia-line">
-            <iframe
-              ref={iframeRef}
-              src={`https://www.youtube.com/embed/${video.providerVideoId}?enablejsapi=1&autoplay=1&rel=0`}
-              className="absolute inset-0 w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={video.title}
-            />
-          </div>
-        );
 
-      case 'vimeo':
-        return <VimeoPlayer ref={iframeRef} videoId={video.providerVideoId} autoPlay={true} />;
-
-      case 'dailymotion':
-        return <DailymotionPlayer ref={iframeRef} videoId={video.providerVideoId} autoPlay={true} />;
-
-      case 'twitch':
-        return <TwitchPlayer ref={iframeRef} videoIdOrChannel={video.providerVideoId} autoPlay={true} />;
-
-      default:
-        return (
-          <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-cozia-surface-2 shadow-2xl border border-cozia-line flex items-center justify-center text-cozia-ink">
-            <p>Playing video: {video.title}</p>
-          </div>
-        );
-    }
-  };
 
   return (
-    <div className="space-y-4 animate-fade-in select-none">
+    <div className="space-y-4 animate-fade-in select-none relative">
+      {/* Dynamic Ambient Background Glow */}
+      <div className="absolute -inset-12 ambient-glow-container rounded-full opacity-60 z-0 pointer-events-none" />
+
       {/* 1. Main Video Player Engine */}
-      {renderPlayerEngine()}
+      <div className="relative z-10">
+        {renderPlayerEngine()}
+      </div>
+
 
       {/* Synchronized Multi-Player Playback Control Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-cozia-surface border border-cozia-line text-xs font-semibold">
